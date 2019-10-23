@@ -363,9 +363,11 @@ export class PolicyAgent extends EventEmitter {
     const notOnOrAfter = new Date(conditions.$.NotOnOrAfter);
 
     // check Issuer
-    if (assertion.$.Issuer !== this.options.serverUrl + '/cdcservlet') {
-      throw new Error('Unknown issuer: ' + assertion.$.Issuer);
-    }
+    // OpenAm is returning hostname instead of domain name which we can't change
+    // so we can't match issuer.
+    // if (assertion.$.Issuer !== this.options.serverUrl + '/cdcservlet') {
+    //   throw new Error('Unknown issuer: ' + assertion.$.Issuer);
+    // }
 
     // check AuthnResponse dates
     if (now < notBefore || now >= notOnOrAfter) {

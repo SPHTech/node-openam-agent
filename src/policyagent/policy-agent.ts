@@ -188,7 +188,6 @@ export class PolicyAgent extends EventEmitter {
     const { cookieName } = await this.getServerInfo();
     const cookies = cookie.parse(req.headers.cookie || '');
     const sessionId = cookies[ cookieName ];
-
     if (sessionId) {
       this.logger.info(`PolicyAgent: found sessionId ${sessionId} in request cookie ${cookieName}`);
     } else {
@@ -388,8 +387,8 @@ export class PolicyAgent extends EventEmitter {
    * Returns a CDSSO login URL
    */
   getCDSSOUrl(req: IncomingMessage): string {
-    const target = baseUrl(req) + CDSSO_PATH + '?goto=' + encodeURIComponent(req.url || '');
-    return this.amClient.getCDSSOUrl(target, this.options.appUrl || '');
+    const target = baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req.url || '');
+    return this.amClient.getCDSSOUrl(target, this.options.customLoginUrl || null, this.options.appUrl || '');
   }
 
   /**
@@ -476,6 +475,7 @@ export class PolicyAgent extends EventEmitter {
   protected registerSessionListener(sessionId: string): Promise<void> {
     return this.reRequest(async () => {
       const { tokenId } = await this.getAgentSession();
+      console.log('rejection error');
       const sessionRequest = XMLBuilder
         .create({
           SessionRequest: {

@@ -44,6 +44,11 @@ export interface PolicyAgentOptions {
   appUrl?: string;
 
   /**
+   * The web agent Id to check for conditional URLs
+   */
+  customLoginUrl?: string;
+
+  /**
    * Callback function. If present, the function's return value will be sent as an
    * error page, otherwise the default error template will be used. The function will be called with a context object as
    * the argument.

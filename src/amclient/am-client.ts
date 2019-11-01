@@ -35,13 +35,16 @@ export class AmClient {
       .get(
         `${this.serverAddress}/json/serverinfo/*`,
         { headers: { host: this.hostname } })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
    * Gets a agent's info (requires an admin session).
    */
-  getAgentInfo(agentId: string, realm: string, sessionId: string, cookieName: string): Promise<any> {
+  getAgentInfo(agentId: string, realm: string, sessionId: string, cookieName: string): Promise<Object> {
     return Axios
       .get(`${this.serverAddress}/json/realm-config/agents/WebAgent/${agentId}`, {
         headers: {
@@ -52,7 +55,10 @@ export class AmClient {
           realm: realm || '/'
         }
       })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
@@ -83,11 +89,17 @@ export class AmClient {
           host: this.hostname,
           'X-OpenAM-Username': username,
           'X-OpenAM-Password': password,
-          'Accept-API-Version': 'resource=1.0'
+          'Accept-API-Version': 'resource=1.0',
+          'Content-Type': 'application/json'
         },
         params: { realm, authIndexType, authIndexValue, noSession }
       })
-      .then(res => res.data);
+      .then(function(res) {
+        return res.data;
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
@@ -110,7 +122,10 @@ export class AmClient {
         headers,
         params: { realm, _action: 'logout' }
       })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
@@ -130,7 +145,10 @@ export class AmClient {
           'Accept-API-Version': 'resource=1.1'
         }
       })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
@@ -162,7 +180,8 @@ export class AmClient {
     if (!loginUrl) {
       loginUrl = `${this.serverUrl}/cdcservlet`;
     }
-    if (loginUrl.indexOf('?')) {
+    // Extract query params if there are any in conditional Url
+    if (loginUrl.indexOf('?') > -1) {
       const queryParams = loginUrl.split('?')[1].split('&');
       queryParams.forEach(function(queryParam) {
         query[queryParam.split('=')[0]] = queryParam.split('=')[1];
@@ -194,7 +213,10 @@ export class AmClient {
           realm: realm || '/'
         }
       })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
@@ -211,7 +233,10 @@ export class AmClient {
           'Content-Type': 'text/xml'
         }
       })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
@@ -232,7 +257,10 @@ export class AmClient {
           realm
         }
       })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
@@ -249,7 +277,10 @@ export class AmClient {
           realm: realm || '/'
         }
       })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 }
 

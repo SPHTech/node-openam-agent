@@ -108,6 +108,14 @@ export class PolicyAgent extends EventEmitter {
   }
 
   /**
+   * Returns a cached agent session
+   */
+  getAgentInfo(tokenId: string, cookieName: string): Promise<Object> {
+    const { webAgentId, realm } = this.options;
+    return this.amClient.getAgentInfo(webAgentId, realm, tokenId, cookieName);
+  }
+
+  /**
    * Creates a new agent session
    */
   authenticateAgent() {
@@ -220,6 +228,16 @@ export class PolicyAgent extends EventEmitter {
     this.sessionCache.put(sessionId, { ...profile, valid: true });
 
     return profile;
+  }
+
+  /**
+   * Fetches the user profile for a given username (uid) and saves it to the sessionCache.
+   */
+  async getAgentInformation(sessionId: string) {
+    const { cookieName } = await this.getServerInfo();
+    const { tokenId } = await this.getAgentSession();
+
+    return await this.getAgentInfo(tokenId, cookieName);
   }
 
   /**
@@ -386,9 +404,42 @@ export class PolicyAgent extends EventEmitter {
   /**
    * Returns a CDSSO login URL
    */
-  getCDSSOUrl(req: IncomingMessage): string {
+  async getCDSSOUrl(req: IncomingMessage): Promise<string> {
+    const sessionId = await this.getSessionIdFromRequest(req);
+    const agentInfo = await this.getAgentInformation(sessionId);
+    const loginUrl = this.getConditionalLoginUrl(agentInfo);
     const target = baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req.url || '');
-    return this.amClient.getCDSSOUrl(target, this.options.customLoginUrl || null, this.options.appUrl || '');
+    return this.amClient.getCDSSOUrl(target, loginUrl || null, this.options.appUrl || '');
+  }
+
+  getConditionalLoginUrl(agentInfo): string {
+    const customProps = agentInfo.advancedWebAgentConfig.customProperties.value;
+    if (customProps.indexOf("org.forgerock.openam.agents.config.allow.custom.login=true") === -1) {
+      return null;
+    }
+    let customUrl = customProps.find(prop => prop.includes("com.sun.identity.agents.config.login.url"));
+    let conditionalUrlKey = customProps.find(prop => prop.includes("com.forgerock.agents.conditional.login.url"));
+    // If connditional url prosent then check for app condition and return login url
+    if (conditionalUrlKey && conditionalUrlKey.indexOf("=") > -1) {
+      return this.getConditionalUrl(conditionalUrlKey);
+    }
+    // If global custom url is present then redirect to that
+    if (customUrl && customUrl.indexOf("=") > -1) {
+      customUrl = customUrl.replace(/ /g, '');
+      return customUrl.split("=")[1];
+    }
+  }
+
+  getConditionalUrl(conditionalUrlKey: string): string {
+    let loginUrl = null;
+    conditionalUrlKey = conditionalUrlKey.replace(/ /g, '');
+    const conditionalUrlVal = conditionalUrlKey.split("=")[1];
+    if (conditionalUrlVal && conditionalUrlVal.indexOf("|") > -1) {
+      if (this.options.appUrl.indexOf(conditionalUrlVal.split("|")[0]) > -1) {
+        loginUrl = conditionalUrlVal.split("|")[1];
+      }
+    }
+    return loginUrl;
   }
 
   /**

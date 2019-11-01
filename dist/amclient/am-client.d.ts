@@ -15,6 +15,10 @@ export declare class AmClient {
      */
     getServerInfo(): Promise<AmServerInfo>;
     /**
+     * Gets a agent's info (requires an admin session).
+     */
+    getAgentInfo(agentId: string, realm: string, sessionId: string, cookieName: string): Promise<any>;
+    /**
      * Sends an authentication request to OpenAM. Returns Promise. The module argument overrides service. The default
      * realm is /. If noSession is true, the credentials will be validated but no session will be created.
      */
@@ -42,7 +46,7 @@ export declare class AmClient {
      * @param {string} provider ProviderId (app URL)
      * @return {string}
      */
-    getCDSSOUrl(target: string, provider: string): string;
+    getCDSSOUrl(target: string, loginUrl: string, provider: string): string;
     /**
      * Gets policy decisions from OpenAM for params. params must be a well formatted OpenAM policy request object.
      * It needs a valid sessionId and cookieName in order to make the request. (The user to whom the session belongs needs

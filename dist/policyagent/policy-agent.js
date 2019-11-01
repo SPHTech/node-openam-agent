@@ -500,8 +500,8 @@ var PolicyAgent = /** @class */ (function (_super) {
      * Returns a CDSSO login URL
      */
     PolicyAgent.prototype.getCDSSOUrl = function (req) {
-        var target = http_utils_1.baseUrl(req) + exports.CDSSO_PATH + '?goto=' + encodeURIComponent(req.url || '');
-        return this.amClient.getCDSSOUrl(target, this.options.appUrl || '');
+        var target = http_utils_1.baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req.url || '');
+        return this.amClient.getCDSSOUrl(target, this.options.customLoginUrl || null, this.options.appUrl || '');
     };
     /**
      * A express router factory for the notification receiver endpoint. It can be used as a middleware for your express
@@ -625,6 +625,7 @@ var PolicyAgent = /** @class */ (function (_super) {
                     case 0: return [4 /*yield*/, this.getAgentSession()];
                     case 1:
                         tokenId = (_a.sent()).tokenId;
+                        console.log('rejection error');
                         sessionRequest = XMLBuilder
                             .create({
                             SessionRequest: {

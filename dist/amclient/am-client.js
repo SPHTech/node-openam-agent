@@ -63,6 +63,22 @@ var AmClient = /** @class */ (function () {
             .then(function (res) { return res.data; });
     };
     /**
+     * Gets a agent's info (requires an admin session).
+     */
+    AmClient.prototype.getAgentInfo = function (agentId, realm, sessionId, cookieName) {
+        return axios_1.default
+            .get(this.serverAddress + "/json/realm-config/agents/WebAgent/" + agentId, {
+            headers: {
+                host: this.hostname,
+                cookie: cookieName + "=" + sessionId
+            },
+            params: {
+                realm: realm || '/'
+            }
+        })
+            .then(function (res) { return res.data; });
+    };
+    /**
      * Sends an authentication request to OpenAM. Returns Promise. The module argument overrides service. The default
      * realm is /. If noSession is true, the credentials will be validated but no session will be created.
      */
@@ -151,17 +167,27 @@ var AmClient = /** @class */ (function () {
      * @param {string} provider ProviderId (app URL)
      * @return {string}
      */
-    AmClient.prototype.getCDSSOUrl = function (target, provider) {
-        return this.serverUrl + url.format({
-            pathname: '/cdcservlet',
-            query: {
-                TARGET: target,
-                RequestID: shortid.generate(),
-                MajorVersion: 1,
-                MinorVersion: 0,
-                ProviderID: provider,
-                IssueInstant: new Date().toISOString()
-            }
+    AmClient.prototype.getCDSSOUrl = function (target, loginUrl, provider) {
+        var query = {
+            goto: target,
+            RequestID: shortid.generate(),
+            MajorVersion: 1,
+            MinorVersion: 0,
+            ProviderID: provider,
+            IssueInstant: new Date().toISOString()
+        };
+        if (!loginUrl) {
+            loginUrl = this.serverUrl + "/cdcservlet";
+        }
+        if (loginUrl.indexOf('?')) {
+            var queryParams = loginUrl.split('?')[1].split('&');
+            queryParams.forEach(function (queryParam) {
+                query[queryParam.split('=')[0]] = queryParam.split('=')[1];
+            });
+            loginUrl = loginUrl.split('?')[0];
+        }
+        return loginUrl + url.format({
+            query: query
         });
     };
     /**

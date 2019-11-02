@@ -129,9 +129,9 @@ export class CookieShield implements Shield {
     return domainMatch;
   }
 
-  private redirectToLogin(req: IncomingMessage, res: ServerResponse, agent: PolicyAgent): void {
-    redirect(res, this.options.cdsso ? agent.getCDSSOUrl(req) : agent.getLoginUrl(req));
+  private async redirectToLogin(req: IncomingMessage, res: ServerResponse, agent: PolicyAgent) {
+    const redirectionUrl = this.options.cdsso ? await agent.getCDSSOUrl(req) : await agent.getLoginUrl(req);
+    redirect(res, redirectionUrl);
   }
-
 
 }

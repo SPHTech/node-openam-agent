@@ -46,7 +46,7 @@ export interface PolicyAgentOptions {
   /**
    * The web agent Id to check for conditional URLs
    */
-  customLoginUrl?: string;
+  webAgentId?: string;
 
   /**
    * Callback function. If present, the function's return value will be sent as an

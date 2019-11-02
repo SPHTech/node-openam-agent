@@ -141,6 +141,13 @@ var PolicyAgent = /** @class */ (function (_super) {
         return this.agentSession;
     };
     /**
+     * Returns a cached agent session
+     */
+    PolicyAgent.prototype.getAgentInfo = function (tokenId, cookieName) {
+        var _a = this.options, webAgentId = _a.webAgentId, realm = _a.realm;
+        return this.amClient.getAgentInfo(webAgentId, realm, tokenId, cookieName);
+    };
+    /**
      * Creates a new agent session
      */
     PolicyAgent.prototype.authenticateAgent = function () {
@@ -304,6 +311,26 @@ var PolicyAgent = /** @class */ (function (_super) {
                         profile = this.amClient.getProfile(userId, realm, sessionId, cookieName);
                         this.sessionCache.put(sessionId, __assign({}, profile, { valid: true }));
                         return [2 /*return*/, profile];
+                }
+            });
+        });
+    };
+    /**
+     * Fetches the user profile for a given username (uid) and saves it to the sessionCache.
+     */
+    PolicyAgent.prototype.getAgentInformation = function (sessionId) {
+        return __awaiter(this, void 0, void 0, function () {
+            var cookieName, tokenId;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.getServerInfo()];
+                    case 1:
+                        cookieName = (_a.sent()).cookieName;
+                        return [4 /*yield*/, this.getAgentSession()];
+                    case 2:
+                        tokenId = (_a.sent()).tokenId;
+                        return [4 /*yield*/, this.getAgentInfo(tokenId, cookieName)];
+                    case 3: return [2 /*return*/, _a.sent()];
                 }
             });
         });
@@ -500,8 +527,50 @@ var PolicyAgent = /** @class */ (function (_super) {
      * Returns a CDSSO login URL
      */
     PolicyAgent.prototype.getCDSSOUrl = function (req) {
-        var target = http_utils_1.baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req.url || '');
-        return this.amClient.getCDSSOUrl(target, this.options.customLoginUrl || null, this.options.appUrl || '');
+        return __awaiter(this, void 0, void 0, function () {
+            var sessionId, agentInfo, loginUrl, target;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.getSessionIdFromRequest(req)];
+                    case 1:
+                        sessionId = _a.sent();
+                        return [4 /*yield*/, this.getAgentInformation(sessionId)];
+                    case 2:
+                        agentInfo = _a.sent();
+                        loginUrl = this.getConditionalLoginUrl(agentInfo);
+                        target = http_utils_1.baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req.url || '');
+                        return [2 /*return*/, this.amClient.getCDSSOUrl(target, loginUrl || null, this.options.appUrl || '')];
+                }
+            });
+        });
+    };
+    PolicyAgent.prototype.getConditionalLoginUrl = function (agentInfo) {
+        var customProps = agentInfo.advancedWebAgentConfig.customProperties.value;
+        if (customProps.indexOf("org.forgerock.openam.agents.config.allow.custom.login=true") === -1) {
+            return null;
+        }
+        var customUrl = customProps.find(function (prop) { return prop.includes("com.sun.identity.agents.config.login.url"); });
+        var conditionalUrlKey = customProps.find(function (prop) { return prop.includes("com.forgerock.agents.conditional.login.url"); });
+        // If connditional url prosent then check for app condition and return login url
+        if (conditionalUrlKey && conditionalUrlKey.indexOf("=") > -1) {
+            return this.getConditionalUrl(conditionalUrlKey);
+        }
+        // If global custom url is present then redirect to that
+        if (customUrl && customUrl.indexOf("=") > -1) {
+            customUrl = customUrl.replace(/ /g, '');
+            return customUrl.split("=")[1];
+        }
+    };
+    PolicyAgent.prototype.getConditionalUrl = function (conditionalUrlKey) {
+        var loginUrl = null;
+        conditionalUrlKey = conditionalUrlKey.replace(/ /g, '');
+        var conditionalUrlVal = conditionalUrlKey.split("=")[1];
+        if (conditionalUrlVal && conditionalUrlVal.indexOf("|") > -1) {
+            if (this.options.appUrl.indexOf(conditionalUrlVal.split("|")[0]) > -1) {
+                loginUrl = conditionalUrlVal.split("|")[1];
+            }
+        }
+        return loginUrl;
     };
     /**
      * A express router factory for the notification receiver endpoint. It can be used as a middleware for your express

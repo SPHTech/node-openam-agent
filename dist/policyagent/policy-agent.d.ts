@@ -63,6 +63,10 @@ export declare class PolicyAgent extends EventEmitter {
         tokenId: string;
     }>;
     /**
+     * Returns a cached agent session
+     */
+    getAgentInfo(tokenId: string, cookieName: string): Promise<Object>;
+    /**
      * Creates a new agent session
      */
     authenticateAgent(): Promise<{
@@ -85,6 +89,10 @@ export declare class PolicyAgent extends EventEmitter {
      * Fetches the user profile for a given username (uid) and saves it to the sessionCache.
      */
     getUserProfile(userId: string, realm: string, sessionId: string): Promise<any>;
+    /**
+     * Fetches the user profile for a given username (uid) and saves it to the sessionCache.
+     */
+    getAgentInformation(sessionId: string): Promise<Object>;
     /**
      * Gets policy decisions from OpenAM. The application name specified in the agent config.
      */
@@ -145,7 +153,9 @@ export declare class PolicyAgent extends EventEmitter {
     /**
      * Returns a CDSSO login URL
      */
-    getCDSSOUrl(req: IncomingMessage): string;
+    getCDSSOUrl(req: IncomingMessage): Promise<string>;
+    getConditionalLoginUrl(agentInfo: any): string;
+    getConditionalUrl(conditionalUrlKey: string): string;
     /**
      * A express router factory for the notification receiver endpoint. It can be used as a middleware for your express
      * application. It adds a single route: /agent/notifications which can be used to receive notifications from OpenAM.

@@ -164,7 +164,27 @@ var CookieShield = /** @class */ (function () {
         });
     };
     CookieShield.prototype.redirectToLogin = function (req, res, agent) {
-        http_utils_1.redirect(res, this.options.cdsso ? agent.getCDSSOUrl(req) : agent.getLoginUrl(req));
+        return __awaiter(this, void 0, void 0, function () {
+            var redirectionUrl, _a;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        if (!this.options.cdsso) return [3 /*break*/, 2];
+                        return [4 /*yield*/, agent.getCDSSOUrl(req)];
+                    case 1:
+                        _a = _b.sent();
+                        return [3 /*break*/, 4];
+                    case 2: return [4 /*yield*/, agent.getLoginUrl(req)];
+                    case 3:
+                        _a = _b.sent();
+                        _b.label = 4;
+                    case 4:
+                        redirectionUrl = _a;
+                        http_utils_1.redirect(res, redirectionUrl);
+                        return [2 /*return*/];
+                }
+            });
+        });
     };
     return CookieShield;
 }());

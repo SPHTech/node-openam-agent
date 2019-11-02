@@ -17,7 +17,7 @@ export declare class AmClient {
     /**
      * Gets a agent's info (requires an admin session).
      */
-    getAgentInfo(agentId: string, realm: string, sessionId: string, cookieName: string): Promise<any>;
+    getAgentInfo(agentId: string, realm: string, sessionId: string, cookieName: string): Promise<Object>;
     /**
      * Sends an authentication request to OpenAM. Returns Promise. The module argument overrides service. The default
      * realm is /. If noSession is true, the credentials will be validated but no session will be created.

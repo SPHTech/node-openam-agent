@@ -60,7 +60,10 @@ var AmClient = /** @class */ (function () {
     AmClient.prototype.getServerInfo = function () {
         return axios_1.default
             .get(this.serverAddress + "/json/serverinfo/*", { headers: { host: this.hostname } })
-            .then(function (res) { return res.data; });
+            .then(function (res) { return res.data; })
+            .catch(function (error) {
+            console.log(error);
+        });
     };
     /**
      * Gets a agent's info (requires an admin session).
@@ -76,7 +79,10 @@ var AmClient = /** @class */ (function () {
                 realm: realm || '/'
             }
         })
-            .then(function (res) { return res.data; });
+            .then(function (res) { return res.data; })
+            .catch(function (error) {
+            console.log(error);
+        });
     };
     /**
      * Sends an authentication request to OpenAM. Returns Promise. The module argument overrides service. The default
@@ -100,11 +106,17 @@ var AmClient = /** @class */ (function () {
                 host: this.hostname,
                 'X-OpenAM-Username': username,
                 'X-OpenAM-Password': password,
-                'Accept-API-Version': 'resource=1.0'
+                'Accept-API-Version': 'resource=1.0',
+                'Content-Type': 'application/json'
             },
             params: { realm: realm, authIndexType: authIndexType, authIndexValue: authIndexValue, noSession: noSession }
         })
-            .then(function (res) { return res.data; });
+            .then(function (res) {
+            return res.data;
+        })
+            .catch(function (error) {
+            console.log(error);
+        });
     };
     /**
      * Sends a logout request to OpenAM to to destroy the session identified by sessionId
@@ -128,7 +140,10 @@ var AmClient = /** @class */ (function () {
                         headers: headers,
                         params: { realm: realm, _action: 'logout' }
                     })
-                        .then(function (res) { return res.data; })];
+                        .then(function (res) { return res.data; })
+                        .catch(function (error) {
+                        console.log(error);
+                    })];
             });
         });
     };
@@ -148,7 +163,10 @@ var AmClient = /** @class */ (function () {
                 'Accept-API-Version': 'resource=1.1'
             }
         })
-            .then(function (res) { return res.data; });
+            .then(function (res) { return res.data; })
+            .catch(function (error) {
+            console.log(error);
+        });
     };
     /**
      * Returns an OpenAM login URL with the goto query parameter set to the original URL in req.
@@ -179,7 +197,8 @@ var AmClient = /** @class */ (function () {
         if (!loginUrl) {
             loginUrl = this.serverUrl + "/cdcservlet";
         }
-        if (loginUrl.indexOf('?')) {
+        // Extract query params if there are any in conditional Url
+        if (loginUrl.indexOf('?') > -1) {
             var queryParams = loginUrl.split('?')[1].split('&');
             queryParams.forEach(function (queryParam) {
                 query[queryParam.split('=')[0]] = queryParam.split('=')[1];
@@ -209,7 +228,10 @@ var AmClient = /** @class */ (function () {
                 realm: realm || '/'
             }
         })
-            .then(function (res) { return res.data; });
+            .then(function (res) { return res.data; })
+            .catch(function (error) {
+            console.log(error);
+        });
     };
     /**
      * Sends requestSet to the SessionService. requestSet must be a properly formatted XML document.
@@ -225,7 +247,10 @@ var AmClient = /** @class */ (function () {
                 'Content-Type': 'text/xml'
             }
         })
-            .then(function (res) { return res.data; });
+            .then(function (res) { return res.data; })
+            .catch(function (error) {
+            console.log(error);
+        });
     };
     /**
      * Validates the OAuth2 access_token in the specified realm.
@@ -246,7 +271,10 @@ var AmClient = /** @class */ (function () {
                 realm: realm
             }
         })
-            .then(function (res) { return res.data; });
+            .then(function (res) { return res.data; })
+            .catch(function (error) {
+            console.log(error);
+        });
     };
     /**
      * Gets a user's profile (requires an agent or admin session).
@@ -262,7 +290,10 @@ var AmClient = /** @class */ (function () {
                 realm: realm || '/'
             }
         })
-            .then(function (res) { return res.data; });
+            .then(function (res) { return res.data; })
+            .catch(function (error) {
+            console.log(error);
+        });
     };
     return AmClient;
 }());

@@ -144,8 +144,8 @@ var PolicyAgent = /** @class */ (function (_super) {
      * Returns a cached agent session
      */
     PolicyAgent.prototype.getAgentInfo = function (tokenId, cookieName) {
-        var _a = this.options, webAgentId = _a.webAgentId, realm = _a.realm;
-        return this.amClient.getAgentInfo(webAgentId, realm, tokenId, cookieName);
+        var _a = this.options, username = _a.username, realm = _a.realm;
+        return this.amClient.getAgentInfo(username, realm, tokenId, cookieName);
     };
     /**
      * Creates a new agent session
@@ -157,7 +157,7 @@ var PolicyAgent = /** @class */ (function (_super) {
             throw new Error('PolicyAgent: agent username and password must be set');
         }
         return this.amClient
-            .authenticate(username, password, realm)
+            .authenticate(username, password, realm, '', 'Application')
             .then(function (res) {
             _this.logger.info("PolicyAgent: agent session created \u2013 " + res.tokenId);
             return res;
@@ -545,7 +545,7 @@ var PolicyAgent = /** @class */ (function (_super) {
         });
     };
     PolicyAgent.prototype.getConditionalLoginUrl = function (agentInfo) {
-        var customProps = agentInfo.advancedWebAgentConfig.customProperties.value;
+        var customProps = agentInfo["com.sun.identity.agents.config.freeformproperties"];
         if (customProps.indexOf("org.forgerock.openam.agents.config.allow.custom.login=true") === -1) {
             return null;
         }
@@ -564,10 +564,20 @@ var PolicyAgent = /** @class */ (function (_super) {
     PolicyAgent.prototype.getConditionalUrl = function (conditionalUrlKey) {
         var loginUrl = null;
         conditionalUrlKey = conditionalUrlKey.replace(/ /g, '');
+        // store queryparams first if login url has any
+        var extratQueryParams = conditionalUrlKey.split('?')[1];
+        // Keep without query parameters part
+        conditionalUrlKey = conditionalUrlKey.split('?')[0];
+        // Get conditional url values with conditions
         var conditionalUrlVal = conditionalUrlKey.split("=")[1];
+        // Split condition with actual login url
         if (conditionalUrlVal && conditionalUrlVal.indexOf("|") > -1) {
             if (this.options.appUrl.indexOf(conditionalUrlVal.split("|")[0]) > -1) {
                 loginUrl = conditionalUrlVal.split("|")[1];
+                // Append query params back
+                if (extratQueryParams) {
+                    loginUrl = loginUrl + "?" + extratQueryParams;
+                }
             }
         }
         return loginUrl;

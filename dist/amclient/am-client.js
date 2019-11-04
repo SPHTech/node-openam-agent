@@ -70,7 +70,7 @@ var AmClient = /** @class */ (function () {
      */
     AmClient.prototype.getAgentInfo = function (agentId, realm, sessionId, cookieName) {
         return axios_1.default
-            .get(this.serverAddress + "/json/realm-config/agents/WebAgent/" + agentId, {
+            .get(this.serverAddress + "/json/realms/root/agents/" + agentId, {
             headers: {
                 host: this.hostname,
                 cookie: cookieName + "=" + sessionId

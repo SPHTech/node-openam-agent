@@ -46,7 +46,7 @@ export class AmClient {
    */
   getAgentInfo(agentId: string, realm: string, sessionId: string, cookieName: string): Promise<Object> {
     return Axios
-      .get(`${this.serverAddress}/json/realm-config/agents/WebAgent/${agentId}`, {
+      .get(`${this.serverAddress}/json/realms/root/agents/${agentId}`, {
         headers: {
           host: this.hostname,
           cookie: `${cookieName}=${sessionId}`

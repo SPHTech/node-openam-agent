@@ -111,8 +111,8 @@ export class PolicyAgent extends EventEmitter {
    * Returns a cached agent session
    */
   getAgentInfo(tokenId: string, cookieName: string): Promise<Object> {
-    const { webAgentId, realm } = this.options;
-    return this.amClient.getAgentInfo(webAgentId, realm, tokenId, cookieName);
+    const { username, realm } = this.options;
+    return this.amClient.getAgentInfo(username, realm, tokenId, cookieName);
   }
 
   /**
@@ -126,7 +126,7 @@ export class PolicyAgent extends EventEmitter {
     }
 
     return this.amClient
-      .authenticate(username, password, realm)
+      .authenticate(username, password, realm, '', 'Application')
       .then(res => {
         this.logger.info(`PolicyAgent: agent session created – ${res.tokenId}`);
         return res;
@@ -413,7 +413,7 @@ export class PolicyAgent extends EventEmitter {
   }
 
   getConditionalLoginUrl(agentInfo): string {
-    const customProps = agentInfo.advancedWebAgentConfig.customProperties.value;
+    const customProps = agentInfo["com.sun.identity.agents.config.freeformproperties"];
     if (customProps.indexOf("org.forgerock.openam.agents.config.allow.custom.login=true") === -1) {
       return null;
     }
@@ -433,10 +433,20 @@ export class PolicyAgent extends EventEmitter {
   getConditionalUrl(conditionalUrlKey: string): string {
     let loginUrl = null;
     conditionalUrlKey = conditionalUrlKey.replace(/ /g, '');
+    // store queryparams first if login url has any
+    const extratQueryParams = conditionalUrlKey.split('?')[1];
+    // Keep without query parameters part
+    conditionalUrlKey = conditionalUrlKey.split('?')[0];
+    // Get conditional url values with conditions
     const conditionalUrlVal = conditionalUrlKey.split("=")[1];
+    // Split condition with actual login url
     if (conditionalUrlVal && conditionalUrlVal.indexOf("|") > -1) {
       if (this.options.appUrl.indexOf(conditionalUrlVal.split("|")[0]) > -1) {
         loginUrl = conditionalUrlVal.split("|")[1];
+        // Append query params back
+        if (extratQueryParams) {
+          loginUrl = `${loginUrl}?${extratQueryParams}`;
+        }
       }
     }
     return loginUrl;

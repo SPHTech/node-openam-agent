@@ -433,7 +433,7 @@ export class PolicyAgent extends EventEmitter {
     }
   }
 
-  getConditionalUrlMap(conditionalUrls: array): object {
+  getConditionalUrlMap(conditionalUrls: Array<string>): Object {
     let urlMaps = {};
     conditionalUrls.forEach(conditionalUrlKey => {
       conditionalUrlKey = conditionalUrlKey.replace(/ /g, '');

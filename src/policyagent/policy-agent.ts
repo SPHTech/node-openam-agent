@@ -418,10 +418,13 @@ export class PolicyAgent extends EventEmitter {
       return null;
     }
     let customUrl = customProps.find(prop => prop.includes("com.sun.identity.agents.config.login.url"));
-    let conditionalUrlKey = customProps.find(prop => prop.includes("com.forgerock.agents.conditional.login.url"));
-    // If connditional url prosent then check for app condition and return login url
-    if (conditionalUrlKey && conditionalUrlKey.indexOf("=") > -1) {
-      return this.getConditionalUrl(conditionalUrlKey);
+    let conditionalUrls = customProps.filter(prop => prop.includes("com.forgerock.agents.conditional.login.url"));
+    // If connditional urls present, get the map with app urls
+    const conditionalUrlMap = this.getConditionalUrlMap(conditionalUrls);
+    for (let appCondition in conditionalUrlMap) {
+      if (this.options.appUrl.indexOf(appCondition) > -1) {
+        return conditionalUrlMap[appCondition];
+      }
     }
     // If global custom url is present then redirect to that
     if (customUrl && customUrl.indexOf("=") > -1) {
@@ -430,26 +433,27 @@ export class PolicyAgent extends EventEmitter {
     }
   }
 
-  getConditionalUrl(conditionalUrlKey: string): string {
-    let loginUrl = null;
-    conditionalUrlKey = conditionalUrlKey.replace(/ /g, '');
-    // store queryparams first if login url has any
-    const extratQueryParams = conditionalUrlKey.split('?')[1];
-    // Keep without query parameters part
-    conditionalUrlKey = conditionalUrlKey.split('?')[0];
-    // Get conditional url values with conditions
-    const conditionalUrlVal = conditionalUrlKey.split("=")[1];
-    // Split condition with actual login url
-    if (conditionalUrlVal && conditionalUrlVal.indexOf("|") > -1) {
-      if (this.options.appUrl.indexOf(conditionalUrlVal.split("|")[0]) > -1) {
-        loginUrl = conditionalUrlVal.split("|")[1];
+  getConditionalUrlMap(conditionalUrls: Array<string>): Object {
+    let urlMaps = {};
+    conditionalUrls.forEach(conditionalUrlKey => {
+      conditionalUrlKey = conditionalUrlKey.replace(/ /g, '');
+      // store queryparams first if login url has any
+      const extratQueryParams = conditionalUrlKey.split('?')[1];
+      // Keep without query parameters part
+      conditionalUrlKey = conditionalUrlKey.split('?')[0];
+      // Get conditional url values with conditions
+      const conditionalUrlVal = conditionalUrlKey.split("=")[1];
+      // Split condition with actual login url
+      if (conditionalUrlVal && conditionalUrlVal.indexOf("|") > -1) {
+        let loginUrl = conditionalUrlVal.split("|")[1];
         // Append query params back
         if (extratQueryParams) {
           loginUrl = `${loginUrl}?${extratQueryParams}`;
         }
+        urlMaps[conditionalUrlVal.split("|")[0]] = loginUrl;
       }
-    }
-    return loginUrl;
+    });
+    return urlMaps;
   }
 
   /**

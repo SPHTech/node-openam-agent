@@ -108,6 +108,14 @@ export class PolicyAgent extends EventEmitter {
   }
 
   /**
+   * Returns a cached agent session
+   */
+  getAgentInfo(tokenId: string, cookieName: string): Promise<Object> {
+    const { username, realm } = this.options;
+    return this.amClient.getAgentInfo(username, realm, tokenId, cookieName);
+  }
+
+  /**
    * Creates a new agent session
    */
   authenticateAgent() {
@@ -118,7 +126,7 @@ export class PolicyAgent extends EventEmitter {
     }
 
     return this.amClient
-      .authenticate(username, password, realm)
+      .authenticate(username, password, realm, '', 'Application')
       .then(res => {
         this.logger.info(`PolicyAgent: agent session created – ${res.tokenId}`);
         return res;
@@ -188,7 +196,6 @@ export class PolicyAgent extends EventEmitter {
     const { cookieName } = await this.getServerInfo();
     const cookies = cookie.parse(req.headers.cookie || '');
     const sessionId = cookies[ cookieName ];
-
     if (sessionId) {
       this.logger.info(`PolicyAgent: found sessionId ${sessionId} in request cookie ${cookieName}`);
     } else {
@@ -221,6 +228,16 @@ export class PolicyAgent extends EventEmitter {
     this.sessionCache.put(sessionId, { ...profile, valid: true });
 
     return profile;
+  }
+
+  /**
+   * Fetches the user profile for a given username (uid) and saves it to the sessionCache.
+   */
+  async getAgentInformation(sessionId: string) {
+    const { cookieName } = await this.getServerInfo();
+    const { tokenId } = await this.getAgentSession();
+
+    return await this.getAgentInfo(tokenId, cookieName);
   }
 
   /**
@@ -363,9 +380,11 @@ export class PolicyAgent extends EventEmitter {
     const notOnOrAfter = new Date(conditions.$.NotOnOrAfter);
 
     // check Issuer
-    if (assertion.$.Issuer !== this.options.serverUrl + '/cdcservlet') {
-      throw new Error('Unknown issuer: ' + assertion.$.Issuer);
-    }
+    // OpenAm is returning hostname instead of domain name which we can't change
+    // so we can't match issuer.
+    // if (assertion.$.Issuer !== this.options.serverUrl + '/cdcservlet') {
+    //   throw new Error('Unknown issuer: ' + assertion.$.Issuer);
+    // }
 
     // check AuthnResponse dates
     if (now < notBefore || now >= notOnOrAfter) {
@@ -385,9 +404,56 @@ export class PolicyAgent extends EventEmitter {
   /**
    * Returns a CDSSO login URL
    */
-  getCDSSOUrl(req: IncomingMessage): string {
-    const target = baseUrl(req) + CDSSO_PATH + '?goto=' + encodeURIComponent(req.url || '');
-    return this.amClient.getCDSSOUrl(target, this.options.appUrl || '');
+  async getCDSSOUrl(req: IncomingMessage): Promise<string> {
+    const sessionId = await this.getSessionIdFromRequest(req);
+    const agentInfo = await this.getAgentInformation(sessionId);
+    const loginUrl = this.getConditionalLoginUrl(agentInfo);
+    const target = baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req.url || '');
+    return this.amClient.getCDSSOUrl(target, loginUrl || null, this.options.appUrl || '');
+  }
+
+  getConditionalLoginUrl(agentInfo): string {
+    const customProps = agentInfo["com.sun.identity.agents.config.freeformproperties"];
+    if (customProps.indexOf("org.forgerock.openam.agents.config.allow.custom.login=true") === -1) {
+      return null;
+    }
+    let customUrl = customProps.find(prop => prop.includes("com.sun.identity.agents.config.login.url"));
+    let conditionalUrls = customProps.filter(prop => prop.includes("com.forgerock.agents.conditional.login.url"));
+    // If connditional urls present, get the map with app urls
+    const conditionalUrlMap = this.getConditionalUrlMap(conditionalUrls);
+    for (let appCondition in conditionalUrlMap) {
+      if (this.options.appUrl.indexOf(appCondition) > -1) {
+        return conditionalUrlMap[appCondition];
+      }
+    }
+    // If global custom url is present then redirect to that
+    if (customUrl && customUrl.indexOf("=") > -1) {
+      customUrl = customUrl.replace(/ /g, '');
+      return customUrl.split("=")[1];
+    }
+  }
+
+  getConditionalUrlMap(conditionalUrls: Array<string>): Object {
+    let urlMaps = {};
+    conditionalUrls.forEach(conditionalUrlKey => {
+      conditionalUrlKey = conditionalUrlKey.replace(/ /g, '');
+      // store queryparams first if login url has any
+      const extratQueryParams = conditionalUrlKey.split('?')[1];
+      // Keep without query parameters part
+      conditionalUrlKey = conditionalUrlKey.split('?')[0];
+      // Get conditional url values with conditions
+      const conditionalUrlVal = conditionalUrlKey.split("=")[1];
+      // Split condition with actual login url
+      if (conditionalUrlVal && conditionalUrlVal.indexOf("|") > -1) {
+        let loginUrl = conditionalUrlVal.split("|")[1];
+        // Append query params back
+        if (extratQueryParams) {
+          loginUrl = `${loginUrl}?${extratQueryParams}`;
+        }
+        urlMaps[conditionalUrlVal.split("|")[0]] = loginUrl;
+      }
+    });
+    return urlMaps;
   }
 
   /**
@@ -474,6 +540,7 @@ export class PolicyAgent extends EventEmitter {
   protected registerSessionListener(sessionId: string): Promise<void> {
     return this.reRequest(async () => {
       const { tokenId } = await this.getAgentSession();
+      console.log('rejection error');
       const sessionRequest = XMLBuilder
         .create({
           SessionRequest: {

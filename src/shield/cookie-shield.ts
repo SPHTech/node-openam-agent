@@ -105,16 +105,17 @@ export class CookieShield implements Shield {
       throw new ShieldEvaluationError(401, 'Unauthorized', 'Invalid session');
     }
 
+    // cdsso: return false so can be redirected to login page.
+    if (this.options.cdsso) {
+      return false;
+    }
+
     if (!(await this.checkDomainMatch(req, agent))) {
       throw new ShieldEvaluationError(400, 'Bad Request', 'Domain mismatch');
     }
   }
 
   private async checkDomainMatch(req: IncomingMessage, agent: PolicyAgent): Promise<boolean> {
-    if (this.options.cdsso) {
-      return false;
-    }
-
     let domainMatch = false;
     const { domains } = await agent.getServerInfo();
 
@@ -128,9 +129,9 @@ export class CookieShield implements Shield {
     return domainMatch;
   }
 
-  private redirectToLogin(req: IncomingMessage, res: ServerResponse, agent: PolicyAgent): void {
-    redirect(res, this.options.cdsso ? agent.getCDSSOUrl(req) : agent.getLoginUrl(req));
+  private async redirectToLogin(req: IncomingMessage, res: ServerResponse, agent: PolicyAgent) {
+    const redirectionUrl = this.options.cdsso ? await agent.getCDSSOUrl(req) : await agent.getLoginUrl(req);
+    redirect(res, redirectionUrl);
   }
-
 
 }

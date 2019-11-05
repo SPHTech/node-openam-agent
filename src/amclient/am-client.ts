@@ -35,7 +35,30 @@ export class AmClient {
       .get(
         `${this.serverAddress}/json/serverinfo/*`,
         { headers: { host: this.hostname } })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
+  }
+
+  /**
+   * Gets a agent's info (requires an admin session).
+   */
+  getAgentInfo(agentId: string, realm: string, sessionId: string, cookieName: string): Promise<Object> {
+    return Axios
+      .get(`${this.serverAddress}/json/realms/root/agents/${agentId}`, {
+        headers: {
+          host: this.hostname,
+          cookie: `${cookieName}=${sessionId}`
+        },
+        params: {
+          realm: realm || '/'
+        }
+      })
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
@@ -66,11 +89,17 @@ export class AmClient {
           host: this.hostname,
           'X-OpenAM-Username': username,
           'X-OpenAM-Password': password,
-          'Accept-API-Version': 'resource=1.0'
+          'Accept-API-Version': 'resource=1.0',
+          'Content-Type': 'application/json'
         },
         params: { realm, authIndexType, authIndexValue, noSession }
       })
-      .then(res => res.data);
+      .then(function(res) {
+        return res.data;
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
@@ -93,7 +122,10 @@ export class AmClient {
         headers,
         params: { realm, _action: 'logout' }
       })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
@@ -113,7 +145,10 @@ export class AmClient {
           'Accept-API-Version': 'resource=1.1'
         }
       })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
@@ -133,17 +168,28 @@ export class AmClient {
    * @param {string} provider ProviderId (app URL)
    * @return {string}
    */
-  getCDSSOUrl(target: string, provider: string) {
-    return this.serverUrl + url.format({
-      pathname: '/cdcservlet',
-      query: {
-        TARGET: target,
-        RequestID: shortid.generate(),
-        MajorVersion: 1,
-        MinorVersion: 0,
-        ProviderID: provider,
-        IssueInstant: new Date().toISOString()
-      }
+  getCDSSOUrl(target: string, loginUrl: string, provider: string) {
+    let query = {
+      goto: target,
+      RequestID: shortid.generate(),
+      MajorVersion: 1,
+      MinorVersion: 0,
+      ProviderID: provider,
+      IssueInstant: new Date().toISOString()
+    };
+    if (!loginUrl) {
+      loginUrl = `${this.serverUrl}/cdcservlet`;
+    }
+    // Extract query params if there are any in conditional Url
+    if (loginUrl.indexOf('?') > -1) {
+      const queryParams = loginUrl.split('?')[1].split('&');
+      queryParams.forEach(function(queryParam) {
+        query[queryParam.split('=')[0]] = queryParam.split('=')[1];
+      });
+      loginUrl = loginUrl.split('?')[0];
+    }
+    return loginUrl + url.format({
+      query: query
     });
   }
 
@@ -167,7 +213,10 @@ export class AmClient {
           realm: realm || '/'
         }
       })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
@@ -184,7 +233,10 @@ export class AmClient {
           'Content-Type': 'text/xml'
         }
       })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
@@ -205,7 +257,10 @@ export class AmClient {
           realm
         }
       })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 
   /**
@@ -222,7 +277,10 @@ export class AmClient {
           realm: realm || '/'
         }
       })
-      .then(res => res.data);
+      .then(res => res.data)
+      .catch(function (error) {
+        console.log(error);
+      });
   }
 }
 

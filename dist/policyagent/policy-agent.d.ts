@@ -155,7 +155,7 @@ export declare class PolicyAgent extends EventEmitter {
      */
     getCDSSOUrl(req: IncomingMessage): Promise<string>;
     getConditionalLoginUrl(agentInfo: any): string;
-    getConditionalUrl(conditionalUrlKey: string): string;
+    getConditionalUrlMap(conditionalUrls: Array<string>): Object;
     /**
      * A express router factory for the notification receiver endpoint. It can be used as a middleware for your express
      * application. It adds a single route: /agent/notifications which can be used to receive notifications from OpenAM.

@@ -550,10 +550,13 @@ var PolicyAgent = /** @class */ (function (_super) {
             return null;
         }
         var customUrl = customProps.find(function (prop) { return prop.includes("com.sun.identity.agents.config.login.url"); });
-        var conditionalUrlKey = customProps.find(function (prop) { return prop.includes("com.forgerock.agents.conditional.login.url"); });
-        // If connditional url prosent then check for app condition and return login url
-        if (conditionalUrlKey && conditionalUrlKey.indexOf("=") > -1) {
-            return this.getConditionalUrl(conditionalUrlKey);
+        var conditionalUrls = customProps.filter(function (prop) { return prop.includes("com.forgerock.agents.conditional.login.url"); });
+        // If connditional urls present, get the map with app urls
+        var conditionalUrlMap = this.getConditionalUrlMap(conditionalUrls);
+        for (var appCondition in conditionalUrlMap) {
+            if (this.options.appUrl.indexOf(appCondition) > -1) {
+                return conditionalUrlMap[appCondition];
+            }
         }
         // If global custom url is present then redirect to that
         if (customUrl && customUrl.indexOf("=") > -1) {
@@ -561,26 +564,27 @@ var PolicyAgent = /** @class */ (function (_super) {
             return customUrl.split("=")[1];
         }
     };
-    PolicyAgent.prototype.getConditionalUrl = function (conditionalUrlKey) {
-        var loginUrl = null;
-        conditionalUrlKey = conditionalUrlKey.replace(/ /g, '');
-        // store queryparams first if login url has any
-        var extratQueryParams = conditionalUrlKey.split('?')[1];
-        // Keep without query parameters part
-        conditionalUrlKey = conditionalUrlKey.split('?')[0];
-        // Get conditional url values with conditions
-        var conditionalUrlVal = conditionalUrlKey.split("=")[1];
-        // Split condition with actual login url
-        if (conditionalUrlVal && conditionalUrlVal.indexOf("|") > -1) {
-            if (this.options.appUrl.indexOf(conditionalUrlVal.split("|")[0]) > -1) {
-                loginUrl = conditionalUrlVal.split("|")[1];
+    PolicyAgent.prototype.getConditionalUrlMap = function (conditionalUrls) {
+        var urlMaps = {};
+        conditionalUrls.forEach(function (conditionalUrlKey) {
+            conditionalUrlKey = conditionalUrlKey.replace(/ /g, '');
+            // store queryparams first if login url has any
+            var extratQueryParams = conditionalUrlKey.split('?')[1];
+            // Keep without query parameters part
+            conditionalUrlKey = conditionalUrlKey.split('?')[0];
+            // Get conditional url values with conditions
+            var conditionalUrlVal = conditionalUrlKey.split("=")[1];
+            // Split condition with actual login url
+            if (conditionalUrlVal && conditionalUrlVal.indexOf("|") > -1) {
+                var loginUrl = conditionalUrlVal.split("|")[1];
                 // Append query params back
                 if (extratQueryParams) {
                     loginUrl = loginUrl + "?" + extratQueryParams;
                 }
+                urlMaps[conditionalUrlVal.split("|")[0]] = loginUrl;
             }
-        }
-        return loginUrl;
+        });
+        return urlMaps;
     };
     /**
      * A express router factory for the notification receiver endpoint. It can be used as a middleware for your express

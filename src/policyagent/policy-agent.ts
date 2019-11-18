@@ -162,7 +162,7 @@ export class PolicyAgent extends EventEmitter {
     try {
       return await this.sessionCache.get(sessionId);
     } catch (err) {
-      this.logger.info(err);
+      this.logger.info(`PolicyAgent: Session not found for this session Id. ${err}`);
     }
 
     const res = await this.amClient.validateSession(sessionId);
@@ -405,14 +405,22 @@ export class PolicyAgent extends EventEmitter {
    * Returns a CDSSO login URL
    */
   async getCDSSOUrl(req: IncomingMessage): Promise<string> {
-    const sessionId = await this.getSessionIdFromRequest(req);
-    const agentInfo = await this.getAgentInformation(sessionId);
-    const loginUrl = this.getConditionalLoginUrl(agentInfo);
+    let loginUrl = null;
+    try {
+      const sessionId = await this.getSessionIdFromRequest(req);
+      const agentInfo = await this.getAgentInformation(sessionId);
+      loginUrl = this.getConditionalLoginUrl(agentInfo);
+    } catch (err) {
+      this.logger.error(`PolicyAgent: ${err.message}`, err);
+    }
     const target = baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req.url || '');
     return this.amClient.getCDSSOUrl(target, loginUrl || null, this.options.appUrl || '');
   }
 
   getConditionalLoginUrl(agentInfo): string {
+    if (!agentInfo) {
+      return null;
+    }
     const customProps = agentInfo["com.sun.identity.agents.config.freeformproperties"];
     if (customProps.indexOf("org.forgerock.openam.agents.config.allow.custom.login=true") === -1) {
       return null;
@@ -540,7 +548,6 @@ export class PolicyAgent extends EventEmitter {
   protected registerSessionListener(sessionId: string): Promise<void> {
     return this.reRequest(async () => {
       const { tokenId } = await this.getAgentSession();
-      console.log('rejection error');
       const sessionRequest = XMLBuilder
         .create({
           SessionRequest: {

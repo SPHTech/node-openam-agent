@@ -205,8 +205,9 @@ export class AmClient {
     return Axios
       .post(`${this.serverAddress}/json/policies`, data, {
         headers: {
-          [ cookieName ]: sessionId,
-          host: this.hostname
+          cookie: `${cookieName}=${sessionId}`,
+          host: this.hostname,
+          'Accept-API-Version': 'resource=2.0'
         },
         params: {
           _action: 'evaluate',

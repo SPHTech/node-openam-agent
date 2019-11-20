@@ -195,6 +195,8 @@ export class PolicyAgent extends EventEmitter {
   async clearSessionCookie(res: Response): Promise<void> {
     const { cookieName } = await this.getServerInfo();
     res.clearCookie(cookieName);
+    res.clearCookie(cookieName, { domain: '.sphdigital.com' });
+    res.clearCookie(cookieName, { domain: '.ds-acc-auth.sphdigital.com' });
   }
 
   /**
@@ -294,7 +296,6 @@ export class PolicyAgent extends EventEmitter {
         req[ 'session' ] = { ...req[ 'session' ], ...session };
         next();
       } catch (err) {
-        console.log('shield err', err);
         this.logger.info('PolicyAgent#shield: evaluation error (%s)', err.message);
 
         if (this.options.letClientHandleErrors) {
@@ -539,6 +540,7 @@ export class PolicyAgent extends EventEmitter {
     if (this.agentSession) {
       const { tokenId } = await this.getAgentSession();
       const { cookieName } = await this.getServerInfo();
+
       this.logger.info(`PolicyAgent: destroying agent session ${tokenId}`);
 
       try {
@@ -548,7 +550,6 @@ export class PolicyAgent extends EventEmitter {
         this.logger.info('PolicyAgent#destroy: logout request error (%s)', err.message);
       }
 
-      // Clear agentSession
       this.agentSession = null;
     }
     // destroy the cache
@@ -563,16 +564,12 @@ export class PolicyAgent extends EventEmitter {
   logout(): RequestHandler {
     return async (req: IncomingMessage, res: Response, next: NextFunction) => {
       try {
-        // Logout session and clear in-memory cache
-        await this.destroy();
-        // clear the cookie
+        // clear the cookie from this domain
         await this.clearSessionCookie(res);
-        if (next) {
-          next();
-        } else {
-          const logoutUrl = await this.getLogoutUrl(req);
-          res.redirect(logoutUrl || '/');
-        }
+        // Set the logout url for client to redirect to
+        req[ 'logoutUrl' ] = await this.getLogoutUrl(req);
+        // Let the client handle redirection to am logout url.
+        next();
       } catch (err) {
         this.logger.info('PolicyAgent#logout: logout request error (%s)', err.message);
 

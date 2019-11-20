@@ -195,8 +195,6 @@ export class PolicyAgent extends EventEmitter {
   async clearSessionCookie(res: Response): Promise<void> {
     const { cookieName } = await this.getServerInfo();
     res.clearCookie(cookieName);
-    res.clearCookie(cookieName, { domain: '.sphdigital.com' });
-    res.clearCookie(cookieName, { domain: '.ds-acc-auth.sphdigital.com' });
   }
 
   /**

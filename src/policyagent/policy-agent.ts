@@ -162,7 +162,7 @@ export class PolicyAgent extends EventEmitter {
     try {
       return await this.sessionCache.get(sessionId);
     } catch (err) {
-      this.logger.info(`PolicyAgent: Session not found for this session Id. ${err}`);
+      this.logger.info(`PolicyAgent: Session not found for this session Id ${sessionId}. ${err}`);
     }
 
     const res = await this.amClient.validateSession(sessionId);
@@ -187,6 +187,14 @@ export class PolicyAgent extends EventEmitter {
   async setSessionCookie(res: Response, sessionId: string): Promise<void> {
     const { cookieName } = await this.getServerInfo();
     res.append('Set-Cookie', cookie.serialize(cookieName, sessionId, { path: '/' }));
+  }
+
+  /**
+   * Sets the session cookie on the response in a set-cookie header
+   */
+  async clearSessionCookie(res: Response): Promise<void> {
+    const { cookieName } = await this.getServerInfo();
+    res.clearCookie(cookieName);
   }
 
   /**
@@ -286,6 +294,7 @@ export class PolicyAgent extends EventEmitter {
         req[ 'session' ] = { ...req[ 'session' ], ...session };
         next();
       } catch (err) {
+        console.log('shield err', err);
         this.logger.info('PolicyAgent#shield: evaluation error (%s)', err.message);
 
         if (this.options.letClientHandleErrors) {
@@ -399,6 +408,13 @@ export class PolicyAgent extends EventEmitter {
    */
   getLoginUrl(req: IncomingMessage): string {
     return this.amClient.getLoginUrl(baseUrl(req) + req.url, this.options.realm);
+  }
+
+  /**
+   * Returns a regular logout URL
+   */
+  getLogoutUrl(req: IncomingMessage): string {
+    return this.amClient.getLogoutUrl(baseUrl(req), this.options.realm);
   }
 
   /**
@@ -522,23 +538,64 @@ export class PolicyAgent extends EventEmitter {
     // destroy the session
     if (this.agentSession) {
       const { tokenId } = await this.getAgentSession();
-      this.logger.info(`PolicyAgent: destroying agent session ${tokenId}`);
-
       const { cookieName } = await this.getServerInfo();
+      this.logger.info(`PolicyAgent: destroying agent session ${tokenId}`);
 
       try {
         await this.amClient.logout(tokenId, cookieName, this.options.realm);
-      } catch {
+      } catch (err) {
         // ignore
+        this.logger.info('PolicyAgent#destroy: logout request error (%s)', err.message);
       }
-    }
 
+      // Clear agentSession
+      this.agentSession = null;
+    }
     // destroy the cache
     try {
       await this.sessionCache.quit();
-    } catch {
+    } catch (err) {
       // ignore
+      this.logger.info('PolicyAgent#destroy: cache clear error (%s)', err.message);
     }
+  }
+
+  logout(): RequestHandler {
+    return async (req: IncomingMessage, res: Response, next: NextFunction) => {
+      try {
+        // Logout session and clear in-memory cache
+        await this.destroy();
+        // clear the cookie
+        await this.clearSessionCookie(res);
+        if (next) {
+          next();
+        } else {
+          const logoutUrl = await this.getLogoutUrl(req);
+          res.redirect(logoutUrl || '/');
+        }
+      } catch (err) {
+        this.logger.info('PolicyAgent#logout: logout request error (%s)', err.message);
+
+        if (this.options.letClientHandleErrors) {
+          next(err);
+          return;
+        }
+
+        // only send the response if it hasn't been sent yet
+        if (res.headersSent) {
+          return;
+        }
+
+        const body = this.errorTemplate({
+          status: err.statusCode,
+          message: err.message,
+          details: err.stack,
+          pkg
+        });
+
+        sendResponse(res, err.statusCode || 500, body, { 'Content-Type': 'text/html' });
+      }
+    };
   }
 
   /**

@@ -561,8 +561,15 @@ export class PolicyAgent extends EventEmitter {
 
   logout(): RequestHandler {
     return async (req: IncomingMessage, res: Response, next: NextFunction) => {
+      // destroy the cache
       try {
-        // clear the cookie from this domain
+        await this.sessionCache.quit();
+      } catch (err) {
+        // ignore
+        this.logger.info('PolicyAgent#destroy: cache clear error (%s)', err.message);
+      }
+      // clear the cookie from this domain
+      try {
         await this.clearSessionCookie(res);
         // Set the logout url for client to redirect to
         req[ 'logoutUrl' ] = await this.getLogoutUrl(req);

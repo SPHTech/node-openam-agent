@@ -105,13 +105,13 @@ export class AmClient {
   /**
    * Sends a logout request to OpenAM to to destroy the session identified by sessionId
    */
-  async logout(sessionId: string, cookieName: string, realm = '/'): Promise<any> {
-    if (!sessionId) {
+  async logout(tokenId: string, cookieName: string, sessionId: string, realm = '/'): Promise<any> {
+    if (!tokenId || !sessionId) {
       return;
     }
 
     const headers: OutgoingHttpHeaders = {
-      Cookie: `${cookieName}=${sessionId}`,
+      Cookie: `${cookieName}=${tokenId}`,
       Host: this.hostname,
       'Content-Type': 'application/json',
       'Accept-API-Version': 'resource=1.2'
@@ -122,9 +122,7 @@ export class AmClient {
         headers,
         params: { realm, _action: 'logout', tokenId: sessionId }
       })
-      .then(res => {
-        return res.data;
-      })
+      .then(res => res.data)
       .catch(function (error) {
         console.log(error);
       });
@@ -159,16 +157,6 @@ export class AmClient {
   getLoginUrl(goto?: string, realm = '/'): string {
     return this.serverUrl + url.format({
       pathname: '/UI/Login',
-      query: { goto, realm }
-    });
-  }
-
-  /**
-   * Returns an OpenAM logout URL with the goto query parameter set to the original URL in req.
-   */
-  getLogoutUrl(goto?: string, realm = '/'): string {
-    return this.serverUrl + url.format({
-      pathname: '/UI/Logout',
       query: { goto, realm }
     });
   }

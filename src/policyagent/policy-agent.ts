@@ -410,13 +410,6 @@ export class PolicyAgent extends EventEmitter {
   }
 
   /**
-   * Returns a regular logout URL
-   */
-  getLogoutUrl(req: IncomingMessage): string {
-    return this.amClient.getLogoutUrl(baseUrl(req), this.options.realm);
-  }
-
-  /**
    * Returns a CDSSO login URL
    */
   async getCDSSOUrl(req: IncomingMessage): Promise<string> {
@@ -542,7 +535,7 @@ export class PolicyAgent extends EventEmitter {
       this.logger.info(`PolicyAgent: destroying agent session ${tokenId}`);
 
       try {
-        await this.amClient.logout(tokenId, cookieName, this.options.realm);
+        await this.amClient.logout(tokenId, cookieName, tokenId, this.options.realm);
       } catch (err) {
         // ignore
         this.logger.info('PolicyAgent#destroy: logout request error (%s)', err.message);
@@ -559,21 +552,44 @@ export class PolicyAgent extends EventEmitter {
     }
   }
 
+  /**
+   * Cleans up user session
+   */
+  async clearUserSession(sessionId) {
+    // destroy the user session
+    const { tokenId } = await this.getAgentSession();
+    const { cookieName } = await this.getServerInfo();
+
+    this.logger.info(`PolicyAgent: destroying user session ${sessionId} using agent token ${tokenId}`);
+
+    try {
+      await this.amClient.logout(tokenId, cookieName, sessionId, this.options.realm);
+    } catch (err) {
+      this.logger.info('PolicyAgent#destroy: logout request error (%s)', err.message);
+    }
+    // destroy the cache
+    try {
+      await this.sessionCache.quit();
+    } catch (err) {
+      this.logger.info('PolicyAgent#destroy: cache clear error (%s)', err.message);
+    }
+  }
+
   logout(): RequestHandler {
     return async (req: IncomingMessage, res: Response, next: NextFunction) => {
-      // destroy the cache
-      try {
-        await this.sessionCache.quit();
-      } catch (err) {
-        // ignore
-        this.logger.info('PolicyAgent#destroy: cache clear error (%s)', err.message);
-      }
-      // clear the cookie from this domain
       try {
         await this.clearSessionCookie(res);
-        // Set the logout url for client to redirect to
-        req[ 'logoutUrl' ] = await this.getLogoutUrl(req);
-        // Let the client handle redirection to am logout url.
+      } catch (err) {
+        this.logger.info('PolicyAgent#logout: clear session cookie error (%s)', err.message);
+      }
+
+      try {
+        const sessionId = await this.getSessionIdFromRequest(req);
+        if (sessionId) {
+          await this.clearUserSession(sessionId);
+        } else {
+          this.logger.info(`PolicyAgent#logout: sessionId ${sessionId} not found in request.`);
+        }
         next();
       } catch (err) {
         this.logger.info('PolicyAgent#logout: logout request error (%s)', err.message);

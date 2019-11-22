@@ -59,7 +59,7 @@ var AmClient = /** @class */ (function () {
      */
     AmClient.prototype.getServerInfo = function () {
         return axios_1.default
-            .get(this.serverAddress + "/json/serverinfo/*", { headers: { host: this.hostname } })
+            .get(this.serverAddress + "/json/serverinfo/*", { headers: { Host: this.hostname } })
             .then(function (res) { return res.data; })
             .catch(function (error) {
             console.log(error);
@@ -72,8 +72,8 @@ var AmClient = /** @class */ (function () {
         return axios_1.default
             .get(this.serverAddress + "/json/realms/root/agents/" + agentId, {
             headers: {
-                host: this.hostname,
-                cookie: cookieName + "=" + sessionId
+                Host: this.hostname,
+                Cookie: cookieName + "=" + sessionId
             },
             params: {
                 realm: realm || '/'
@@ -103,7 +103,7 @@ var AmClient = /** @class */ (function () {
         return axios_1.default
             .post(this.serverAddress + "/json/authenticate", null, {
             headers: {
-                host: this.hostname,
+                Host: this.hostname,
                 'X-OpenAM-Username': username,
                 'X-OpenAM-Password': password,
                 'Accept-API-Version': 'resource=1.0',
@@ -121,24 +121,24 @@ var AmClient = /** @class */ (function () {
     /**
      * Sends a logout request to OpenAM to to destroy the session identified by sessionId
      */
-    AmClient.prototype.logout = function (sessionId, cookieName, realm) {
+    AmClient.prototype.logout = function (tokenId, cookieName, sessionId, realm) {
         if (realm === void 0) { realm = '/'; }
         return __awaiter(this, void 0, void 0, function () {
-            var _a, headers;
-            return __generator(this, function (_b) {
-                if (!sessionId) {
+            var headers;
+            return __generator(this, function (_a) {
+                if (!tokenId || !sessionId) {
                     return [2 /*return*/];
                 }
-                headers = (_a = {},
-                    _a[cookieName] = sessionId,
-                    _a.host = this.hostname,
-                    _a['Content-Type'] = 'application/json',
-                    _a['Accept-API-Version'] = 'resource=1.1',
-                    _a);
+                headers = {
+                    Cookie: cookieName + "=" + tokenId,
+                    Host: this.hostname,
+                    'Content-Type': 'application/json',
+                    'Accept-API-Version': 'resource=1.2'
+                };
                 return [2 /*return*/, axios_1.default
                         .post(this.serverAddress + "/json/sessions", null, {
                         headers: headers,
-                        params: { realm: realm, _action: 'logout' }
+                        params: { realm: realm, _action: 'logout', tokenId: sessionId }
                     })
                         .then(function (res) { return res.data; })
                         .catch(function (error) {
@@ -158,7 +158,7 @@ var AmClient = /** @class */ (function () {
             .post(this.serverAddress + "/json/sessions/" + sessionId, null, {
             params: { _action: 'validate' },
             headers: {
-                host: this.hostname,
+                Host: this.hostname,
                 'Content-Type': 'application/json',
                 'Accept-API-Version': 'resource=1.1'
             }
@@ -216,13 +216,13 @@ var AmClient = /** @class */ (function () {
      */
     AmClient.prototype.getPolicyDecision = function (data, sessionId, cookieName, realm) {
         if (realm === void 0) { realm = '/'; }
-        var _a;
         return axios_1.default
             .post(this.serverAddress + "/json/policies", data, {
-            headers: (_a = {},
-                _a[cookieName] = sessionId,
-                _a.host = this.hostname,
-                _a),
+            headers: {
+                Cookie: cookieName + "=" + sessionId,
+                Host: this.hostname,
+                'Accept-API-Version': 'resource=1.0'
+            },
             params: {
                 _action: 'evaluate',
                 realm: realm || '/'
@@ -243,7 +243,7 @@ var AmClient = /** @class */ (function () {
         return axios_1.default
             .post(this.serverAddress + "/sessionservice", requestSet, {
             headers: {
-                host: this.hostname,
+                Host: this.hostname,
                 'Content-Type': 'text/xml'
             }
         })
@@ -264,7 +264,7 @@ var AmClient = /** @class */ (function () {
         return axios_1.default
             .get(this.serverAddress + "/oauth2/tokeninfo", {
             headers: {
-                host: this.hostname
+                Host: this.hostname
             },
             params: {
                 access_token: accessToken,
@@ -283,8 +283,8 @@ var AmClient = /** @class */ (function () {
         return axios_1.default
             .get(this.serverAddress + "/json/users/" + userId, {
             headers: {
-                host: this.hostname,
-                cookie: cookieName + "=" + sessionId
+                Host: this.hostname,
+                Cookie: cookieName + "=" + sessionId
             },
             params: {
                 realm: realm || '/'

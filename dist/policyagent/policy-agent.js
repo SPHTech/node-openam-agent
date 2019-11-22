@@ -218,7 +218,7 @@ var PolicyAgent = /** @class */ (function (_super) {
                     case 1: return [2 /*return*/, _a.sent()];
                     case 2:
                         err_2 = _a.sent();
-                        this.logger.info(err_2);
+                        this.logger.info("PolicyAgent: Session not found for this session Id " + sessionId + ". " + err_2);
                         return [3 /*break*/, 3];
                     case 3: return [4 /*yield*/, this.amClient.validateSession(sessionId)];
                     case 4:
@@ -250,6 +250,23 @@ var PolicyAgent = /** @class */ (function (_super) {
                     case 1:
                         cookieName = (_a.sent()).cookieName;
                         res.append('Set-Cookie', cookie.serialize(cookieName, sessionId, { path: '/' }));
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
+    /**
+     * Sets the session cookie on the response in a set-cookie header
+     */
+    PolicyAgent.prototype.clearSessionCookie = function (res) {
+        return __awaiter(this, void 0, void 0, function () {
+            var cookieName;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.getServerInfo()];
+                    case 1:
+                        cookieName = (_a.sent()).cookieName;
+                        res.clearCookie(cookieName);
                         return [2 /*return*/];
                 }
             });
@@ -528,16 +545,27 @@ var PolicyAgent = /** @class */ (function (_super) {
      */
     PolicyAgent.prototype.getCDSSOUrl = function (req) {
         return __awaiter(this, void 0, void 0, function () {
-            var sessionId, agentInfo, loginUrl, target;
+            var loginUrl, sessionId, agentInfo, err_6, target;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.getSessionIdFromRequest(req)];
+                    case 0:
+                        loginUrl = null;
+                        _a.label = 1;
                     case 1:
+                        _a.trys.push([1, 4, , 5]);
+                        return [4 /*yield*/, this.getSessionIdFromRequest(req)];
+                    case 2:
                         sessionId = _a.sent();
                         return [4 /*yield*/, this.getAgentInformation(sessionId)];
-                    case 2:
+                    case 3:
                         agentInfo = _a.sent();
                         loginUrl = this.getConditionalLoginUrl(agentInfo);
+                        return [3 /*break*/, 5];
+                    case 4:
+                        err_6 = _a.sent();
+                        this.logger.error("PolicyAgent: " + err_6.message, err_6);
+                        return [3 /*break*/, 5];
+                    case 5:
                         target = http_utils_1.baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req.url || '');
                         return [2 /*return*/, this.amClient.getCDSSOUrl(target, loginUrl || null, this.options.appUrl || '')];
                 }
@@ -545,6 +573,9 @@ var PolicyAgent = /** @class */ (function (_super) {
         });
     };
     PolicyAgent.prototype.getConditionalLoginUrl = function (agentInfo) {
+        if (!agentInfo) {
+            return null;
+        }
         var customProps = agentInfo["com.sun.identity.agents.config.freeformproperties"];
         if (customProps.indexOf("org.forgerock.openam.agents.config.allow.custom.login=true") === -1) {
             return null;
@@ -604,7 +635,7 @@ var PolicyAgent = /** @class */ (function (_super) {
         this.options.notificationsEnabled = true;
         var router = express_1.Router();
         router.post(path, BodyParser.text({ type: 'text/xml' }), function (req, res) { return __awaiter(_this, void 0, void 0, function () {
-            var xml, svcid, err_6;
+            var xml, svcid, err_7;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -625,8 +656,8 @@ var PolicyAgent = /** @class */ (function (_super) {
                         }
                         return [3 /*break*/, 4];
                     case 3:
-                        err_6 = _a.sent();
-                        this.logger.error("PolicyAgent: " + err_6.message, err_6);
+                        err_7 = _a.sent();
+                        this.logger.error("PolicyAgent: " + err_7.message, err_7);
                         return [3 /*break*/, 4];
                     case 4: return [2 /*return*/];
                 }
@@ -659,41 +690,145 @@ var PolicyAgent = /** @class */ (function (_super) {
      */
     PolicyAgent.prototype.destroy = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var tokenId, cookieName, _a, _b;
-            return __generator(this, function (_c) {
-                switch (_c.label) {
+            var tokenId, cookieName, err_8, err_9;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
                     case 0:
-                        if (!this.agentSession) return [3 /*break*/, 6];
+                        if (!this.agentSession) return [3 /*break*/, 7];
                         return [4 /*yield*/, this.getAgentSession()];
                     case 1:
-                        tokenId = (_c.sent()).tokenId;
-                        this.logger.info("PolicyAgent: destroying agent session " + tokenId);
+                        tokenId = (_a.sent()).tokenId;
                         return [4 /*yield*/, this.getServerInfo()];
                     case 2:
-                        cookieName = (_c.sent()).cookieName;
-                        _c.label = 3;
+                        cookieName = (_a.sent()).cookieName;
+                        this.logger.info("PolicyAgent: destroying agent session " + tokenId);
+                        _a.label = 3;
                     case 3:
-                        _c.trys.push([3, 5, , 6]);
-                        return [4 /*yield*/, this.amClient.logout(tokenId, cookieName, this.options.realm)];
+                        _a.trys.push([3, 5, , 6]);
+                        return [4 /*yield*/, this.amClient.logout(tokenId, cookieName, tokenId, this.options.realm)];
                     case 4:
-                        _c.sent();
+                        _a.sent();
                         return [3 /*break*/, 6];
                     case 5:
-                        _a = _c.sent();
+                        err_8 = _a.sent();
+                        // ignore
+                        this.logger.info('PolicyAgent#destroy: logout request error (%s)', err_8.message);
                         return [3 /*break*/, 6];
                     case 6:
-                        _c.trys.push([6, 8, , 9]);
+                        this.agentSession = null;
+                        _a.label = 7;
+                    case 7:
+                        _a.trys.push([7, 9, , 10]);
+                        return [4 /*yield*/, this.sessionCache.quit()];
+                    case 8:
+                        _a.sent();
+                        return [3 /*break*/, 10];
+                    case 9:
+                        err_9 = _a.sent();
+                        // ignore
+                        this.logger.info('PolicyAgent#destroy: cache clear error (%s)', err_9.message);
+                        return [3 /*break*/, 10];
+                    case 10: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    /**
+     * Cleans up user session
+     */
+    PolicyAgent.prototype.clearUserSession = function (sessionId) {
+        return __awaiter(this, void 0, void 0, function () {
+            var tokenId, cookieName, err_10, err_11;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.getAgentSession()];
+                    case 1:
+                        tokenId = (_a.sent()).tokenId;
+                        return [4 /*yield*/, this.getServerInfo()];
+                    case 2:
+                        cookieName = (_a.sent()).cookieName;
+                        this.logger.info("PolicyAgent: destroying user session " + sessionId + " using agent token " + tokenId);
+                        _a.label = 3;
+                    case 3:
+                        _a.trys.push([3, 5, , 6]);
+                        return [4 /*yield*/, this.amClient.logout(tokenId, cookieName, sessionId, this.options.realm)];
+                    case 4:
+                        _a.sent();
+                        return [3 /*break*/, 6];
+                    case 5:
+                        err_10 = _a.sent();
+                        this.logger.info('PolicyAgent#destroy: logout request error (%s)', err_10.message);
+                        return [3 /*break*/, 6];
+                    case 6:
+                        _a.trys.push([6, 8, , 9]);
                         return [4 /*yield*/, this.sessionCache.quit()];
                     case 7:
-                        _c.sent();
+                        _a.sent();
                         return [3 /*break*/, 9];
                     case 8:
-                        _b = _c.sent();
+                        err_11 = _a.sent();
+                        this.logger.info('PolicyAgent#destroy: cache clear error (%s)', err_11.message);
                         return [3 /*break*/, 9];
                     case 9: return [2 /*return*/];
                 }
             });
         });
+    };
+    PolicyAgent.prototype.logout = function () {
+        var _this = this;
+        return function (req, res, next) { return __awaiter(_this, void 0, void 0, function () {
+            var err_12, sessionId, err_13, body;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 2, , 3]);
+                        return [4 /*yield*/, this.clearSessionCookie(res)];
+                    case 1:
+                        _a.sent();
+                        return [3 /*break*/, 3];
+                    case 2:
+                        err_12 = _a.sent();
+                        this.logger.info('PolicyAgent#logout: clear session cookie error (%s)', err_12.message);
+                        return [3 /*break*/, 3];
+                    case 3:
+                        _a.trys.push([3, 8, , 9]);
+                        return [4 /*yield*/, this.getSessionIdFromRequest(req)];
+                    case 4:
+                        sessionId = _a.sent();
+                        if (!sessionId) return [3 /*break*/, 6];
+                        return [4 /*yield*/, this.clearUserSession(sessionId)];
+                    case 5:
+                        _a.sent();
+                        return [3 /*break*/, 7];
+                    case 6:
+                        this.logger.info("PolicyAgent#logout: sessionId " + sessionId + " not found in request.");
+                        _a.label = 7;
+                    case 7:
+                        next();
+                        return [3 /*break*/, 9];
+                    case 8:
+                        err_13 = _a.sent();
+                        this.logger.info('PolicyAgent#logout: logout request error (%s)', err_13.message);
+                        if (this.options.letClientHandleErrors) {
+                            next(err_13);
+                            return [2 /*return*/];
+                        }
+                        // only send the response if it hasn't been sent yet
+                        if (res.headersSent) {
+                            return [2 /*return*/];
+                        }
+                        body = this.errorTemplate({
+                            status: err_13.statusCode,
+                            message: err_13.message,
+                            details: err_13.stack,
+                            pkg: pkg
+                        });
+                        http_utils_1.sendResponse(res, err_13.statusCode || 500, body, { 'Content-Type': 'text/html' });
+                        return [3 /*break*/, 9];
+                    case 9: return [2 /*return*/];
+                }
+            });
+        }); };
     };
     /**
      * Constructs a RequestSet document containing a AddSessionListener node for sessionId, and sends it to the
@@ -708,7 +843,6 @@ var PolicyAgent = /** @class */ (function (_super) {
                     case 0: return [4 /*yield*/, this.getAgentSession()];
                     case 1:
                         tokenId = (_a.sent()).tokenId;
-                        console.log('rejection error');
                         sessionRequest = XMLBuilder
                             .create({
                             SessionRequest: {

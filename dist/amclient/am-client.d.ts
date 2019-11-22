@@ -28,7 +28,7 @@ export declare class AmClient {
     /**
      * Sends a logout request to OpenAM to to destroy the session identified by sessionId
      */
-    logout(sessionId: string, cookieName: string, realm?: string): Promise<any>;
+    logout(tokenId: string, cookieName: string, sessionId: string, realm?: string): Promise<any>;
     /**
      * Validates a given sessionId against OpenAM.
      */

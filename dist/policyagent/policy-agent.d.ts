@@ -82,6 +82,10 @@ export declare class PolicyAgent extends EventEmitter {
      */
     setSessionCookie(res: Response, sessionId: string): Promise<void>;
     /**
+     * Sets the session cookie on the response in a set-cookie header
+     */
+    clearSessionCookie(res: Response): Promise<void>;
+    /**
      * Gets the session ID from the session cookie in the request
      */
     getSessionIdFromRequest(req: IncomingMessage): Promise<string>;
@@ -141,7 +145,7 @@ export declare class PolicyAgent extends EventEmitter {
      * app.use(agent.cdsso('/my/cdsso/path'));
      * app.get('/', new openamAgent.CookieShield(cdsso: true));
      */
-    cdsso(path?: string): import("express-serve-static-core").Router;
+    cdsso(path?: string): import("@forgerock/openam-agent/node_modules/@types/express-serve-static-core").Router;
     /**
      * Parses the LARES response (CDSSO Assertion) and returns the Session ID if valid
      */
@@ -167,7 +171,7 @@ export declare class PolicyAgent extends EventEmitter {
      *
      * app.use(agent.notifications('/my/notification/path'));
      */
-    notifications(path?: string): import("express-serve-static-core").Router;
+    notifications(path?: string): import("@forgerock/openam-agent/node_modules/@types/express-serve-static-core").Router;
     /**
      * Parses notifications in a notification set and emits a 'session' event for each. CookieShield instances listen
      * on this event to delete any destroyed cookies from the agent's session cache.
@@ -178,6 +182,11 @@ export declare class PolicyAgent extends EventEmitter {
      * Cleans up after the agent (closes the cache and logs out the agent)
      */
     destroy(): Promise<void>;
+    /**
+     * Cleans up user session
+     */
+    clearUserSession(sessionId: any): Promise<void>;
+    logout(): RequestHandler;
     /**
      * Constructs a RequestSet document containing a AddSessionListener node for sessionId, and sends it to the
      * SessionService.

@@ -34,7 +34,7 @@ export class AmClient {
     return Axios
       .get(
         `${this.serverAddress}/json/serverinfo/*`,
-        { headers: { host: this.hostname } })
+        { headers: { Host: this.hostname } })
       .then(res => res.data)
       .catch(function (error) {
         console.log(error);
@@ -48,8 +48,8 @@ export class AmClient {
     return Axios
       .get(`${this.serverAddress}/json/realms/root/agents/${agentId}`, {
         headers: {
-          host: this.hostname,
-          cookie: `${cookieName}=${sessionId}`
+          Host: this.hostname,
+          Cookie: `${cookieName}=${sessionId}`
         },
         params: {
           realm: realm || '/'
@@ -86,7 +86,7 @@ export class AmClient {
     return Axios
       .post(`${this.serverAddress}/json/authenticate`, null, {
         headers: {
-          host: this.hostname,
+          Host: this.hostname,
           'X-OpenAM-Username': username,
           'X-OpenAM-Password': password,
           'Accept-API-Version': 'resource=1.0',
@@ -105,22 +105,22 @@ export class AmClient {
   /**
    * Sends a logout request to OpenAM to to destroy the session identified by sessionId
    */
-  async logout(sessionId: string, cookieName: string, realm = '/'): Promise<any> {
-    if (!sessionId) {
+  async logout(tokenId: string, cookieName: string, sessionId: string, realm = '/'): Promise<any> {
+    if (!tokenId || !sessionId) {
       return;
     }
 
     const headers: OutgoingHttpHeaders = {
-      [ cookieName ]: sessionId,
-      host: this.hostname,
+      Cookie: `${cookieName}=${tokenId}`,
+      Host: this.hostname,
       'Content-Type': 'application/json',
-      'Accept-API-Version': 'resource=1.1'
+      'Accept-API-Version': 'resource=1.2'
     };
 
     return Axios
       .post(`${this.serverAddress}/json/sessions`, null, {
         headers,
-        params: { realm, _action: 'logout' }
+        params: { realm, _action: 'logout', tokenId: sessionId }
       })
       .then(res => res.data)
       .catch(function (error) {
@@ -140,7 +140,7 @@ export class AmClient {
       .post(`${this.serverAddress}/json/sessions/${sessionId}`, null, {
         params: { _action: 'validate' },
         headers: {
-          host: this.hostname,
+          Host: this.hostname,
           'Content-Type': 'application/json',
           'Accept-API-Version': 'resource=1.1'
         }
@@ -205,8 +205,9 @@ export class AmClient {
     return Axios
       .post(`${this.serverAddress}/json/policies`, data, {
         headers: {
-          [ cookieName ]: sessionId,
-          host: this.hostname
+          Cookie: `${cookieName}=${sessionId}`,
+          Host: this.hostname,
+          'Accept-API-Version': 'resource=1.0'
         },
         params: {
           _action: 'evaluate',
@@ -229,7 +230,7 @@ export class AmClient {
     return Axios
       .post(`${this.serverAddress}/sessionservice`, requestSet, {
         headers: {
-          host: this.hostname,
+          Host: this.hostname,
           'Content-Type': 'text/xml'
         }
       })
@@ -250,7 +251,7 @@ export class AmClient {
     return Axios
       .get(`${this.serverAddress}/oauth2/tokeninfo`, {
         headers: {
-          host: this.hostname
+          Host: this.hostname
         },
         params: {
           access_token: accessToken,
@@ -270,8 +271,8 @@ export class AmClient {
     return Axios
       .get(`${this.serverAddress}/json/users/${userId}`, {
         headers: {
-          host: this.hostname,
-          cookie: `${cookieName}=${sessionId}`
+          Host: this.hostname,
+          Cookie: `${cookieName}=${sessionId}`
         },
         params: {
           realm: realm || '/'

@@ -162,7 +162,7 @@ export class PolicyAgent extends EventEmitter {
     try {
       return await this.sessionCache.get(sessionId);
     } catch (err) {
-      this.logger.info(err);
+      this.logger.info(`PolicyAgent: Session not found for this session Id ${sessionId}. ${err}`);
     }
 
     const res = await this.amClient.validateSession(sessionId);
@@ -187,6 +187,14 @@ export class PolicyAgent extends EventEmitter {
   async setSessionCookie(res: Response, sessionId: string): Promise<void> {
     const { cookieName } = await this.getServerInfo();
     res.append('Set-Cookie', cookie.serialize(cookieName, sessionId, { path: '/' }));
+  }
+
+  /**
+   * Sets the session cookie on the response in a set-cookie header
+   */
+  async clearSessionCookie(res: Response): Promise<void> {
+    const { cookieName } = await this.getServerInfo();
+    res.clearCookie(cookieName);
   }
 
   /**
@@ -405,14 +413,22 @@ export class PolicyAgent extends EventEmitter {
    * Returns a CDSSO login URL
    */
   async getCDSSOUrl(req: IncomingMessage): Promise<string> {
-    const sessionId = await this.getSessionIdFromRequest(req);
-    const agentInfo = await this.getAgentInformation(sessionId);
-    const loginUrl = this.getConditionalLoginUrl(agentInfo);
+    let loginUrl = null;
+    try {
+      const sessionId = await this.getSessionIdFromRequest(req);
+      const agentInfo = await this.getAgentInformation(sessionId);
+      loginUrl = this.getConditionalLoginUrl(agentInfo);
+    } catch (err) {
+      this.logger.error(`PolicyAgent: ${err.message}`, err);
+    }
     const target = baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req.url || '');
     return this.amClient.getCDSSOUrl(target, loginUrl || null, this.options.appUrl || '');
   }
 
   getConditionalLoginUrl(agentInfo): string {
+    if (!agentInfo) {
+      return null;
+    }
     const customProps = agentInfo["com.sun.identity.agents.config.freeformproperties"];
     if (customProps.indexOf("org.forgerock.openam.agents.config.allow.custom.login=true") === -1) {
       return null;
@@ -514,23 +530,90 @@ export class PolicyAgent extends EventEmitter {
     // destroy the session
     if (this.agentSession) {
       const { tokenId } = await this.getAgentSession();
-      this.logger.info(`PolicyAgent: destroying agent session ${tokenId}`);
-
       const { cookieName } = await this.getServerInfo();
 
-      try {
-        await this.amClient.logout(tokenId, cookieName, this.options.realm);
-      } catch {
-        // ignore
-      }
-    }
+      this.logger.info(`PolicyAgent: destroying agent session ${tokenId}`);
 
+      try {
+        await this.amClient.logout(tokenId, cookieName, tokenId, this.options.realm);
+      } catch (err) {
+        // ignore
+        this.logger.info('PolicyAgent#destroy: logout request error (%s)', err.message);
+      }
+
+      this.agentSession = null;
+    }
     // destroy the cache
     try {
       await this.sessionCache.quit();
-    } catch {
+    } catch (err) {
       // ignore
+      this.logger.info('PolicyAgent#destroy: cache clear error (%s)', err.message);
     }
+  }
+
+  /**
+   * Cleans up user session
+   */
+  async clearUserSession(sessionId) {
+    // destroy the user session
+    const { tokenId } = await this.getAgentSession();
+    const { cookieName } = await this.getServerInfo();
+
+    this.logger.info(`PolicyAgent: destroying user session ${sessionId} using agent token ${tokenId}`);
+
+    try {
+      await this.amClient.logout(tokenId, cookieName, sessionId, this.options.realm);
+    } catch (err) {
+      this.logger.info('PolicyAgent#destroy: logout request error (%s)', err.message);
+    }
+    // destroy the cache
+    try {
+      await this.sessionCache.quit();
+    } catch (err) {
+      this.logger.info('PolicyAgent#destroy: cache clear error (%s)', err.message);
+    }
+  }
+
+  logout(): RequestHandler {
+    return async (req: IncomingMessage, res: Response, next: NextFunction) => {
+      try {
+        await this.clearSessionCookie(res);
+      } catch (err) {
+        this.logger.info('PolicyAgent#logout: clear session cookie error (%s)', err.message);
+      }
+
+      try {
+        const sessionId = await this.getSessionIdFromRequest(req);
+        if (sessionId) {
+          await this.clearUserSession(sessionId);
+        } else {
+          this.logger.info(`PolicyAgent#logout: sessionId ${sessionId} not found in request.`);
+        }
+        next();
+      } catch (err) {
+        this.logger.info('PolicyAgent#logout: logout request error (%s)', err.message);
+
+        if (this.options.letClientHandleErrors) {
+          next(err);
+          return;
+        }
+
+        // only send the response if it hasn't been sent yet
+        if (res.headersSent) {
+          return;
+        }
+
+        const body = this.errorTemplate({
+          status: err.statusCode,
+          message: err.message,
+          details: err.stack,
+          pkg
+        });
+
+        sendResponse(res, err.statusCode || 500, body, { 'Content-Type': 'text/html' });
+      }
+    };
   }
 
   /**
@@ -540,7 +623,6 @@ export class PolicyAgent extends EventEmitter {
   protected registerSessionListener(sessionId: string): Promise<void> {
     return this.reRequest(async () => {
       const { tokenId } = await this.getAgentSession();
-      console.log('rejection error');
       const sessionRequest = XMLBuilder
         .create({
           SessionRequest: {

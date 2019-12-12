@@ -5,7 +5,6 @@ import { AmPolicyDecision, AmPolicyDecisionRequest, ShieldEvaluationError } from
 import { PolicyAgent } from '../policyagent/policy-agent';
 import { SessionData } from './session-data';
 import { Shield } from './shield';
-import { baseUrl } from '../utils/http-utils';
 
 export class PolicyShield implements Shield {
   constructor(readonly applicationName: string = 'iPlanetAMWebAgentService',
@@ -21,7 +20,6 @@ export class PolicyShield implements Shield {
 
     try {
       decision = await agent.getPolicyDecision(params);
-      console.log('decision', decision);
     } catch (err) {
       throw new ShieldEvaluationError(
         err.statusCode || err.status || 500,
@@ -44,7 +42,7 @@ export class PolicyShield implements Shield {
   }
 
   toDecisionParams(req: IncomingMessage, ssoToken: string): AmPolicyDecisionRequest {
-    let resourceName = req[ 'originalUrl' ] || baseUrl(req) + req.url;
+    let resourceName = req[ 'originalUrl' ] || req.url;
 
     if (this.pathOnly) {
       const { path } = url.parse(req.url);
@@ -54,10 +52,7 @@ export class PolicyShield implements Shield {
     return {
       resources: [ resourceName ],
       application: this.applicationName,
-      subject: { ssoToken },
-      environment: {
-        // "svc": ["st_online"]
-      }
+      subject: { ssoToken }
     };
   }
 

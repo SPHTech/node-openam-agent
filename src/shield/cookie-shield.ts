@@ -51,7 +51,6 @@ export class CookieShield implements Shield {
     try {
       const sessionId = await agent.getSessionIdFromRequest(req);
       const sessionData = await this.handleSessionCookie(req, res, agent, sessionId);
-
       if (sessionData) {
         deferred.resolve({ key: sessionId, data: sessionData });
       } else {
@@ -79,12 +78,11 @@ export class CookieShield implements Shield {
                                     agent: PolicyAgent,
                                     sessionId: string): Promise<any> {
     const validationResponse = await agent.validateSession(sessionId);
-    const { valid, dn, uid, realm } = validationResponse;
+    const { valid, uid, realm } = validationResponse;
 
     if (valid) {
       agent.logger.info(`CookieShield: ${req.url} => allow`);
-
-      if (dn && this.options.getProfiles) {
+      if (this.options.getProfiles && uid) {
         const profile = await agent.getUserProfile(uid, realm, sessionId);
         return { ...validationResponse, ...profile };
       }

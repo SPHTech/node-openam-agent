@@ -232,7 +232,7 @@ export class PolicyAgent extends EventEmitter {
     const { cookieName } = await this.getServerInfo();
     await this.getAgentSession();
 
-    const profile = this.amClient.getProfile(userId, realm, sessionId, cookieName);
+    const profile = await this.amClient.getProfile(userId, realm, sessionId, cookieName);
     this.sessionCache.put(sessionId, { ...profile, valid: true });
 
     return profile;

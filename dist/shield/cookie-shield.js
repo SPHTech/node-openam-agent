@@ -101,16 +101,16 @@ var CookieShield = /** @class */ (function () {
     };
     CookieShield.prototype.handleSessionCookie = function (req, res, agent, sessionId) {
         return __awaiter(this, void 0, void 0, function () {
-            var validationResponse, valid, dn, uid, realm, profile;
+            var validationResponse, valid, uid, realm, profile;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, agent.validateSession(sessionId)];
                     case 1:
                         validationResponse = _a.sent();
-                        valid = validationResponse.valid, dn = validationResponse.dn, uid = validationResponse.uid, realm = validationResponse.realm;
+                        valid = validationResponse.valid, uid = validationResponse.uid, realm = validationResponse.realm;
                         if (!valid) return [3 /*break*/, 4];
                         agent.logger.info("CookieShield: " + req.url + " => allow");
-                        if (!(dn && this.options.getProfiles)) return [3 /*break*/, 3];
+                        if (!(this.options.getProfiles && uid)) return [3 /*break*/, 3];
                         return [4 /*yield*/, agent.getUserProfile(uid, realm, sessionId)];
                     case 2:
                         profile = _a.sent();

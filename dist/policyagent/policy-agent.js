@@ -325,7 +325,9 @@ var PolicyAgent = /** @class */ (function (_super) {
                         return [4 /*yield*/, this.getAgentSession()];
                     case 5:
                         _a.sent();
-                        profile = this.amClient.getProfile(userId, realm, sessionId, cookieName);
+                        return [4 /*yield*/, this.amClient.getProfile(userId, realm, sessionId, cookieName)];
+                    case 6:
+                        profile = _a.sent();
                         this.sessionCache.put(sessionId, __assign({}, profile, { valid: true }));
                         return [2 /*return*/, profile];
                 }

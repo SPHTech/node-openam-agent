@@ -426,7 +426,7 @@ export class PolicyAgent extends EventEmitter {
     } catch (err) {
       this.logger.error(`PolicyAgent: ${err.message}`, err);
     }
-    const target = baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req.url || '');
+    const target = baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req.originalUrl || req.url || '/');
     return this.amClient.getCDSSOUrl(target, loginUrl || null, this.options.appUrl || '');
   }
 

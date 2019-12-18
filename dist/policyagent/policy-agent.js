@@ -249,7 +249,7 @@ var PolicyAgent = /** @class */ (function (_super) {
                     case 0: return [4 /*yield*/, this.getServerInfo()];
                     case 1:
                         cookieName = (_a.sent()).cookieName;
-                        res.append('Set-Cookie', cookie.serialize(cookieName, sessionId, { path: '/' }));
+                        res.setHeader('Set-Cookie', cookie.serialize(cookieName, sessionId, { path: '/' }));
                         return [2 /*return*/];
                 }
             });
@@ -266,7 +266,7 @@ var PolicyAgent = /** @class */ (function (_super) {
                     case 0: return [4 /*yield*/, this.getServerInfo()];
                     case 1:
                         cookieName = (_a.sent()).cookieName;
-                        res.clearCookie(cookieName);
+                        res.setHeader('Set-Cookie', cookie.serialize(cookieName, '', { path: '/' }));
                         return [2 /*return*/];
                 }
             });
@@ -337,19 +337,22 @@ var PolicyAgent = /** @class */ (function (_super) {
     /**
      * Fetches the user profile for a given username (uid) and saves it to the sessionCache.
      */
-    PolicyAgent.prototype.getAgentInformation = function (sessionId) {
+    PolicyAgent.prototype.getAgentInformation = function () {
         return __awaiter(this, void 0, void 0, function () {
             var cookieName, tokenId;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.getServerInfo()];
+                    case 0:
+                        if (!!this.agentInfo) return [3 /*break*/, 3];
+                        return [4 /*yield*/, this.getServerInfo()];
                     case 1:
                         cookieName = (_a.sent()).cookieName;
                         return [4 /*yield*/, this.getAgentSession()];
                     case 2:
                         tokenId = (_a.sent()).tokenId;
-                        return [4 /*yield*/, this.getAgentInfo(tokenId, cookieName)];
-                    case 3: return [2 /*return*/, _a.sent()];
+                        this.agentInfo = this.getAgentInfo(tokenId, cookieName);
+                        _a.label = 3;
+                    case 3: return [2 /*return*/, this.agentInfo];
                 }
             });
         });
@@ -558,7 +561,7 @@ var PolicyAgent = /** @class */ (function (_super) {
                         return [4 /*yield*/, this.getSessionIdFromRequest(req)];
                     case 2:
                         sessionId = _a.sent();
-                        return [4 /*yield*/, this.getAgentInformation(sessionId)];
+                        return [4 /*yield*/, this.getAgentInformation()];
                     case 3:
                         agentInfo = _a.sent();
                         loginUrl = this.getConditionalLoginUrl(agentInfo);
@@ -568,7 +571,7 @@ var PolicyAgent = /** @class */ (function (_super) {
                         this.logger.error("PolicyAgent: " + err_6.message, err_6);
                         return [3 /*break*/, 5];
                     case 5:
-                        target = http_utils_1.baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req.url || '');
+                        target = http_utils_1.baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req['originalUrl'] || req.url || '/');
                         return [2 /*return*/, this.amClient.getCDSSOUrl(target, loginUrl || null, this.options.appUrl || '')];
                 }
             });
@@ -618,6 +621,28 @@ var PolicyAgent = /** @class */ (function (_super) {
             }
         });
         return urlMaps;
+    };
+    /**
+     * Returns custom access denied page
+     */
+    PolicyAgent.prototype.getAccessDeniedUrl = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var accessDeniedUrl, agentInfo, customProps;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        accessDeniedUrl = null;
+                        return [4 /*yield*/, this.getAgentInformation()];
+                    case 1:
+                        agentInfo = _a.sent();
+                        customProps = agentInfo["com.sun.identity.agents.config.access.denied.url"];
+                        if (customProps && customProps[0]) {
+                            accessDeniedUrl = customProps[0];
+                        }
+                        return [2 /*return*/, accessDeniedUrl];
+                }
+            });
+        });
     };
     /**
      * A express router factory for the notification receiver endpoint. It can be used as a middleware for your express

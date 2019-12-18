@@ -10,4 +10,5 @@ export declare class PolicyShield implements Shield {
     constructor(applicationName?: string, pathOnly?: boolean);
     evaluate(req: IncomingMessage, res: ServerResponse, agent: PolicyAgent): Promise<SessionData>;
     toDecisionParams(req: IncomingMessage, ssoToken: string): AmPolicyDecisionRequest;
+    private redirectToAccessDenied;
 }

@@ -1,8 +1,8 @@
 /// <reference types="node" />
 import { EventEmitter } from 'events';
-import { RequestHandler, Response } from 'express';
+import { RequestHandler } from 'express';
 import * as Handlebars from 'handlebars';
-import { IncomingMessage } from 'http';
+import { IncomingMessage, ServerResponse } from 'http';
 import { Logger } from 'winston';
 import { AmClient } from '../amclient/am-client';
 import { AmPolicyDecision } from '../amclient/am-policy-decision';
@@ -48,6 +48,7 @@ export declare class PolicyAgent extends EventEmitter {
     sessionCache: Cache;
     private serverInfo?;
     private agentSession?;
+    private agentInfo?;
     private errorTemplate;
     private cdssoPath;
     private notificationPath;
@@ -80,11 +81,11 @@ export declare class PolicyAgent extends EventEmitter {
     /**
      * Sets the session cookie on the response in a set-cookie header
      */
-    setSessionCookie(res: Response, sessionId: string): Promise<void>;
+    setSessionCookie(res: ServerResponse, sessionId: string): Promise<void>;
     /**
      * Sets the session cookie on the response in a set-cookie header
      */
-    clearSessionCookie(res: Response): Promise<void>;
+    clearSessionCookie(res: ServerResponse): Promise<void>;
     /**
      * Gets the session ID from the session cookie in the request
      */
@@ -96,7 +97,7 @@ export declare class PolicyAgent extends EventEmitter {
     /**
      * Fetches the user profile for a given username (uid) and saves it to the sessionCache.
      */
-    getAgentInformation(sessionId: string): Promise<Object>;
+    getAgentInformation(): Promise<Object>;
     /**
      * Gets policy decisions from OpenAM. The application name specified in the agent config.
      */
@@ -160,6 +161,10 @@ export declare class PolicyAgent extends EventEmitter {
     getCDSSOUrl(req: IncomingMessage): Promise<string>;
     getConditionalLoginUrl(agentInfo: any): string;
     getConditionalUrlMap(conditionalUrls: Array<string>): Object;
+    /**
+     * Returns custom access denied page
+     */
+    getAccessDeniedUrl(): Promise<string>;
     /**
      * A express router factory for the notification receiver endpoint. It can be used as a middleware for your express
      * application. It adds a single route: /agent/notifications which can be used to receive notifications from OpenAM.

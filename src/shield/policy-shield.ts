@@ -73,6 +73,7 @@ export class PolicyShield implements Shield {
     let goto = resources && resources[ 0 ];
     if (accessDeniedUrl) {
       accessDeniedUrl += (accessDeniedUrl.includes('?') ? '&' : '?') + 'goto=' + goto;
+      await agent.clearSessionCookie(res);
       redirect(res, accessDeniedUrl);
     }
   }

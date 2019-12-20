@@ -115,11 +115,14 @@ var PolicyShield = /** @class */ (function () {
                     case 1:
                         accessDeniedUrl = _a.sent();
                         goto = resources && resources[0];
-                        if (accessDeniedUrl) {
-                            accessDeniedUrl += (accessDeniedUrl.includes('?') ? '&' : '?') + 'goto=' + goto;
-                            http_utils_1.redirect(res, accessDeniedUrl);
-                        }
-                        return [2 /*return*/];
+                        if (!accessDeniedUrl) return [3 /*break*/, 3];
+                        accessDeniedUrl += (accessDeniedUrl.includes('?') ? '&' : '?') + 'goto=' + goto;
+                        return [4 /*yield*/, agent.clearSessionCookie(res)];
+                    case 2:
+                        _a.sent();
+                        http_utils_1.redirect(res, accessDeniedUrl);
+                        _a.label = 3;
+                    case 3: return [2 /*return*/];
                 }
             });
         });

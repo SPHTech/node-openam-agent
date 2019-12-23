@@ -27,6 +27,13 @@ exports.baseUrl = baseUrl;
  * Returns the request scheme - "http" or "https"
  */
 function getProtocol(req) {
+    // Express has procotol or secure param on req
+    if (req['protocol']) {
+        return req['protocol'];
+    }
+    if (req.connection && req.connection['encrypted']) {
+        return req.connection['encrypted'] ? 'https' : 'http';
+    }
     return req.url.startsWith('https') ? 'https' : 'http';
 }
 exports.getProtocol = getProtocol;

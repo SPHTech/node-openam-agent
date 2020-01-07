@@ -223,7 +223,7 @@ var PolicyAgent = /** @class */ (function (_super) {
                     case 3: return [4 /*yield*/, this.amClient.validateSession(sessionId)];
                     case 4:
                         res = _a.sent();
-                        if (res.valid) {
+                        if (res && res.valid) {
                             this.logger.info("PolicyAgent: session " + sessionId + " is valid; saving to cache");
                             this.sessionCache.put(sessionId, res);
                             if (this.options.notificationsEnabled) {
@@ -233,7 +233,7 @@ var PolicyAgent = /** @class */ (function (_super) {
                         else {
                             this.logger.info("PolicyAgent: session " + sessionId + " is invalid");
                         }
-                        return [2 /*return*/, res];
+                        return [2 /*return*/, res || {}];
                 }
             });
         });

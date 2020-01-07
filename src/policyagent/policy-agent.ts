@@ -168,7 +168,7 @@ export class PolicyAgent extends EventEmitter {
 
     const res = await this.amClient.validateSession(sessionId);
 
-    if (res.valid) {
+    if (res && res.valid) {
       this.logger.info(`PolicyAgent: session ${sessionId} is valid; saving to cache`);
       this.sessionCache.put(sessionId, res);
 
@@ -179,7 +179,7 @@ export class PolicyAgent extends EventEmitter {
       this.logger.info(`PolicyAgent: session ${sessionId} is invalid`);
     }
 
-    return res;
+    return res || {};
   }
 
   /**

@@ -26,5 +26,12 @@ export function baseUrl(req: IncomingMessage): string {
  * Returns the request scheme - "http" or "https"
  */
 export function getProtocol(req: IncomingMessage): 'http' | 'https' {
+  // Express has procotol or secure param on req
+  if (req['protocol']) {
+    return req['protocol'];
+  }
+  if (req.connection && req.connection['encrypted']) {
+    return req.connection['encrypted'] ? 'https' : 'http';
+  }
   return req.url.startsWith('https') ? 'https' : 'http';
 }

@@ -64,6 +64,7 @@ export class PolicyAgent extends EventEmitter {
 
   private serverInfo?: Promise<AmServerInfo>;
   private agentSession?: Promise<{ tokenId: string }>;
+  private agentInfo?: Promise<Object>;
   private errorTemplate: (details: EvaluationErrorDetails) => string;
   private cdssoPath = CDSSO_PATH;
   private notificationPath = NOTIFICATION_PATH;
@@ -167,7 +168,7 @@ export class PolicyAgent extends EventEmitter {
 
     const res = await this.amClient.validateSession(sessionId);
 
-    if (res.valid) {
+    if (res && res.valid) {
       this.logger.info(`PolicyAgent: session ${sessionId} is valid; saving to cache`);
       this.sessionCache.put(sessionId, res);
 
@@ -178,23 +179,23 @@ export class PolicyAgent extends EventEmitter {
       this.logger.info(`PolicyAgent: session ${sessionId} is invalid`);
     }
 
-    return res;
+    return res || {};
   }
 
   /**
    * Sets the session cookie on the response in a set-cookie header
    */
-  async setSessionCookie(res: Response, sessionId: string): Promise<void> {
+  async setSessionCookie(res: ServerResponse, sessionId: string): Promise<void> {
     const { cookieName } = await this.getServerInfo();
-    res.append('Set-Cookie', cookie.serialize(cookieName, sessionId, { path: '/' }));
+    res.setHeader('Set-Cookie', cookie.serialize(cookieName, sessionId, { path: '/' }));
   }
 
   /**
    * Sets the session cookie on the response in a set-cookie header
    */
-  async clearSessionCookie(res: Response): Promise<void> {
+  async clearSessionCookie(res: ServerResponse): Promise<void> {
     const { cookieName } = await this.getServerInfo();
-    res.clearCookie(cookieName);
+    res.setHeader('Set-Cookie', cookie.serialize(cookieName, '', { path: '/' }));
   }
 
   /**
@@ -232,7 +233,7 @@ export class PolicyAgent extends EventEmitter {
     const { cookieName } = await this.getServerInfo();
     await this.getAgentSession();
 
-    const profile = this.amClient.getProfile(userId, realm, sessionId, cookieName);
+    const profile = await this.amClient.getProfile(userId, realm, sessionId, cookieName);
     this.sessionCache.put(sessionId, { ...profile, valid: true });
 
     return profile;
@@ -241,11 +242,15 @@ export class PolicyAgent extends EventEmitter {
   /**
    * Fetches the user profile for a given username (uid) and saves it to the sessionCache.
    */
-  async getAgentInformation(sessionId: string) {
-    const { cookieName } = await this.getServerInfo();
-    const { tokenId } = await this.getAgentSession();
+  async getAgentInformation() {
+    if (!this.agentInfo) {
+      const { cookieName } = await this.getServerInfo();
+      const { tokenId } = await this.getAgentSession();
 
-    return await this.getAgentInfo(tokenId, cookieName);
+      this.agentInfo = this.getAgentInfo(tokenId, cookieName);
+    }
+
+    return this.agentInfo;
   }
 
   /**
@@ -416,12 +421,12 @@ export class PolicyAgent extends EventEmitter {
     let loginUrl = null;
     try {
       const sessionId = await this.getSessionIdFromRequest(req);
-      const agentInfo = await this.getAgentInformation(sessionId);
+      const agentInfo = await this.getAgentInformation();
       loginUrl = this.getConditionalLoginUrl(agentInfo);
     } catch (err) {
       this.logger.error(`PolicyAgent: ${err.message}`, err);
     }
-    const target = baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req.url || '');
+    const target = baseUrl(req) + this.cdssoPath + '?goto=' + encodeURIComponent(req[ 'originalUrl' ] || req.url || '/');
     return this.amClient.getCDSSOUrl(target, loginUrl || null, this.options.appUrl || '');
   }
 
@@ -470,6 +475,20 @@ export class PolicyAgent extends EventEmitter {
       }
     });
     return urlMaps;
+  }
+
+  /**
+   * Returns custom access denied page
+   */
+  async getAccessDeniedUrl(): Promise<string> {
+    let accessDeniedUrl = null;
+    const agentInfo = await this.getAgentInformation();
+    const customProps = agentInfo["com.sun.identity.agents.config.access.denied.url"];
+    if (customProps && customProps[ 0 ]) {
+      accessDeniedUrl = customProps[ 0 ];
+    }
+
+    return accessDeniedUrl;
   }
 
   /**
@@ -576,7 +595,7 @@ export class PolicyAgent extends EventEmitter {
   }
 
   logout(): RequestHandler {
-    return async (req: IncomingMessage, res: Response, next: NextFunction) => {
+    return async (req: IncomingMessage, res: ServerResponse, next: NextFunction) => {
       try {
         await this.clearSessionCookie(res);
       } catch (err) {

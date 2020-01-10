@@ -5,12 +5,16 @@ import { AmPolicyDecision, AmPolicyDecisionRequest, ShieldEvaluationError } from
 import { PolicyAgent } from '../policyagent/policy-agent';
 import { SessionData } from './session-data';
 import { Shield } from './shield';
+import { Deferred } from '../utils/deferred';
+import { baseUrl, redirect } from '../utils/http-utils';
 
 export class PolicyShield implements Shield {
   constructor(readonly applicationName: string = 'iPlanetAMWebAgentService',
               readonly pathOnly = false) {}
 
   async evaluate(req: IncomingMessage, res: ServerResponse, agent: PolicyAgent): Promise<SessionData> {
+    const deferred = new Deferred<SessionData>();
+
     const sessionId = await agent.getSessionIdFromRequest(req);
     const params = this.toDecisionParams(req, sessionId);
 
@@ -30,7 +34,7 @@ export class PolicyShield implements Shield {
 
     agent.logger.debug(`PolicyShield: got policy decision ${JSON.stringify(decision, null, 2)}`);
 
-    if (decision[ 0 ].actions[ req.method ]) {
+    if (decision && decision[ 0 ].actions[ req.method ]) {
       agent.logger.info(`PolicyShield: ${req.url} => allow`);
       const session = req[ 'session' ] || { data: {} };
       session.data.policies = decision;
@@ -38,11 +42,19 @@ export class PolicyShield implements Shield {
     }
 
     agent.logger.info(`PolicyShield: ${req.url} => deny`);
-    throw new ShieldEvaluationError(403, 'Forbidden', 'You are not authorized to access this resource.');
+
+    try {
+      await this.redirectToAccessDenied(req, res, agent, params.resources);
+    } catch (err) {
+      throw new ShieldEvaluationError(403, 'Forbidden', 'You are not authorized to access this resource.');
+    }
+
+    return await deferred.promise;
+
   }
 
   toDecisionParams(req: IncomingMessage, ssoToken: string): AmPolicyDecisionRequest {
-    let resourceName = req[ 'originalUrl' ] || req.url;
+    let resourceName = req[ 'originalUrl' ] ? baseUrl(req) + req[ 'originalUrl' ] : baseUrl(req) + req.url;
 
     if (this.pathOnly) {
       const { path } = url.parse(req.url);
@@ -54,6 +66,16 @@ export class PolicyShield implements Shield {
       application: this.applicationName,
       subject: { ssoToken }
     };
+  }
+
+  private async redirectToAccessDenied(req: IncomingMessage, res: ServerResponse, agent: PolicyAgent, resources: Array<string>) {
+    let accessDeniedUrl = await agent.getAccessDeniedUrl();
+    let goto = resources && resources[ 0 ];
+    if (accessDeniedUrl) {
+      accessDeniedUrl += (accessDeniedUrl.includes('?') ? '&' : '?') + 'goto=' + goto;
+      await agent.clearSessionCookie(res);
+      redirect(res, accessDeniedUrl);
+    }
   }
 
 }

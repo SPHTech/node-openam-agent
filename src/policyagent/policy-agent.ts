@@ -187,7 +187,7 @@ export class PolicyAgent extends EventEmitter {
    */
   async setSessionCookie(res: ServerResponse, sessionId: string): Promise<void> {
     const { cookieName } = await this.getServerInfo();
-    res.setHeader('Set-Cookie', cookie.serialize(cookieName, sessionId, { path: '/' }));
+    res.setHeader('Set-Cookie', cookie.serialize(cookieName, sessionId, { path: '/', sameSite: 'none' }));
   }
 
   /**
@@ -369,7 +369,7 @@ export class PolicyAgent extends EventEmitter {
         const sessionId = await this.getSessionIdFromLARES(req.body.LARES);
         this.logger.info(`PolicyAgent: CDSSO Assertion validated. Setting cookie for session ${sessionId}`);
         await this.setSessionCookie(res, sessionId);
-        res.redirect(req.query.goto || '/');
+        res.redirect(req.query.goto?.toString() ?? '/');
       } catch (err) {
         fail(err, res);
       }

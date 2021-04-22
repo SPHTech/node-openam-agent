@@ -195,7 +195,7 @@ export class PolicyAgent extends EventEmitter {
    */
   async clearSessionCookie(res: ServerResponse): Promise<void> {
     const { cookieName } = await this.getServerInfo();
-    res.setHeader('Set-Cookie', cookie.serialize(cookieName, '', { path: '/' }));
+    res.setHeader('Set-Cookie', cookie.serialize(cookieName, '', { path: '/', sameSite: 'none', secure: true }));
   }
 
   /**

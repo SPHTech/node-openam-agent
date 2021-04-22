@@ -268,7 +268,7 @@ var PolicyAgent = /** @class */ (function (_super) {
                     case 0: return [4 /*yield*/, this.getServerInfo()];
                     case 1:
                         cookieName = (_a.sent()).cookieName;
-                        res.setHeader('Set-Cookie', cookie.serialize(cookieName, '', { path: '/' }));
+                        res.setHeader('Set-Cookie', cookie.serialize(cookieName, '', { path: '/', sameSite: 'none', secure: true }));
                         return [2 /*return*/];
                 }
             });
